@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getState, saveState } from "../_shared.js";
+import { getState, saveState } from "./_shared.js";
 
 async function refreshFromExternalApi(state: any) {
   if (!state.listening) return { state, changed: false };

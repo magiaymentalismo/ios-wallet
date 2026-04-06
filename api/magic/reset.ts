@@ -1,6 +1,6 @@
 import type { VercelRequest, VercelResponse } from "@vercel/node";
 import { kv } from "@vercel/kv";
-import { DEFAULT_STATE, sessionKey, getState } from "../../_shared.js";
+import { DEFAULT_STATE, sessionKey, getState } from "../_shared.js";
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   const sessionId = req.query.s as string | undefined;
