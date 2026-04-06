@@ -1,0 +1,19 @@
+@import "tailwindcss";
+
+/* iOS system font */
+html, body, #root {
+  background-color: #f2f2f7;
+  font-family: -apple-system, BlinkMacSystemFont, "SF Pro Text", "SF Pro Display", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* Prevent double-tap zoom */
+* {
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+}
+
+button, h1, h2, h3, label {
+  -webkit-user-select: none;
+  user-select: none;
+}

@@ -1,0 +1,5 @@
+{
+  "name": "iOS Wallet Replica",
+  "description": "A polished replica of the iOS Wallet app featuring interactive card stacks and transaction details.",
+  "requestFramePermissions": []
+}

@@ -1,0 +1,27 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <title>Wallet</title>
+
+    <!-- iOS home screen icon -->
+    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+
+    <!-- iOS standalone mode (no browser chrome) — works WITHOUT manifest -->
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="Wallet" />
+
+    <!-- NOTE: manifest.json intentionally NOT linked here.
+         With a manifest, iOS ignores the saved URL and always launches
+         from start_url ("/"), which strips the ?s= session param.
+         Without manifest, iOS saves the exact URL (with ?s=santi) and
+         launches from it every time. Standalone mode still works via
+         apple-mobile-web-app-capable above. -->
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+  </body>
+</html>
