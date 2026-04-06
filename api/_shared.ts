@@ -18,6 +18,7 @@ export const DEFAULT_STATE = {
     { id: "revolut-1", bank: "Revolut", last4: "0000", color: "from-[#7b4397] via-[#dc2430] to-[#7b4397]", brand: "mastercard" as const, cardType: "Debit" as const },
   ],
   apiResult: "",
+  apiLastFetched: "",
   listening: false,
   firstCardLast4: "1239",
 };

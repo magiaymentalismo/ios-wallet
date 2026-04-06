@@ -11,6 +11,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     ...DEFAULT_STATE,
     ...existing,
     apiResult: "",
+    apiLastFetched: "",
     listening: false,
     cards: existing.cards.map((c: any, i: number) => ({
       ...c,

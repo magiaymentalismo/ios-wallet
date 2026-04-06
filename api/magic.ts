@@ -7,6 +7,8 @@ async function refreshFromExternalApi(state: any) {
     const res = await fetch(`https://11q.co/pro-api/${state.apiUserId}/last-bd`);
     if (!res.ok) return { state, changed: false };
     const data = await res.json();
+    const now = new Date().toISOString();
+    state.apiLastFetched = now;
     let changed = false;
     if (data.query && String(data.query) !== state.apiResult) {
       state.apiResult = String(data.query);

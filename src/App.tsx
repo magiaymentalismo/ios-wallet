@@ -24,7 +24,7 @@ interface MagicCard {
 }
 interface MerchantEntry { name: string; icon: string; }
 interface MagicState {
-  cardholderName: string; apiResult: string; apiUserId: string;
+  cardholderName: string; apiResult: string; apiLastFetched: string; apiUserId: string;
   iberiaNumber: string; iberiaTier: string; iberiaMemberSince: string; iberiaValidThru: string;
   listening: boolean; currency: string; merchantMap: Record<string, MerchantEntry>; cards: MagicCard[];
   loyaltyName: string; loyaltySubtitle: string; loyaltyColor: string; loyaltyFieldLabel: string;
@@ -167,6 +167,18 @@ function relativeDate(hoursAgo: number): string {
 // Format amount like real Apple Wallet: "10,94 €"
 function fmtAmount(intPart: number, decPart: number, curr: string): string {
   return `${intPart},${decPart < 10 ? "0" + decPart : decPart} ${curr}`;
+}
+
+function formatDateTime(timestamp: string) {
+  const d = new Date(timestamp);
+  if (isNaN(d.getTime())) return "Nunca";
+  return d.toLocaleString("es-ES", {
+    day: "2-digit",
+    month: "2-digit",
+    year: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 }
 
 // Generate mock background transactions
@@ -396,9 +408,13 @@ function SettingsPage({magicState,onClose,onUpdate,onReset,isSaving}:{
                     onBlur={e=>onUpdate({apiUserId:e.target.value})}
                     className="text-sm font-bold text-right bg-transparent outline-none w-28 focus:bg-gray-100 rounded-lg px-2 py-1"/>
                 </div>
-                {magicState.apiResult&&(
+                <div className="flex items-center justify-between py-3">
+                  <span className="text-sm text-gray-500">Último ingreso API</span>
+                  <span className="text-sm font-bold text-blue-500 font-mono">{magicState.apiLastFetched ? formatDateTime(magicState.apiLastFetched) : "Nunca"}</span>
+                </div>
+                {magicState.apiResult && (
                   <div className="flex items-center justify-between py-3">
-                    <span className="text-sm text-gray-500">Last query</span>
+                    <span className="text-sm text-gray-500">Última consulta</span>
                     <span className="text-sm font-bold text-blue-500 font-mono">"{magicState.apiResult}"</span>
                   </div>
                 )}
@@ -668,6 +684,7 @@ export default function App() {
     cardholderName:"ARIEL hamui",apiResult:"",apiUserId:"131",
     iberiaNumber:"IB 125900928",iberiaTier:"PLATA",iberiaMemberSince:"04/24",iberiaValidThru:"04/26",
     listening:false,currency:"£",merchantMap:{},
+    apiLastFetched:"",
     loyaltyName:"IBERIA",loyaltySubtitle:"PLUS",loyaltyColor:"#D7192D",loyaltyFieldLabel:"IBERIA PLUS NUMBER",
     cards:[
       {id:"bbva-1",bank:"BBVA",last4:"1239",color:"from-[#004481] via-[#00a9e0] to-[#004481]",brand:"visa",cardType:"Debit"},
