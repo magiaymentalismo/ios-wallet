@@ -221,7 +221,7 @@ const AmexLogo = () => (
   </div>
 );
 
-const CardView = ({card,isStacked,onClick,index}:{card:Card;isStacked?:boolean;onClick?:()=>void;index?:number}) => {
+const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:number}> = ({card,isStacked,onClick,index}) => {
   const isWhite = card.gradient.includes("from-white")||card.gradient.includes("from-gray-100");
   return (
     <motion.div layoutId={`card-${card.id}`} onClick={onClick}
@@ -305,7 +305,7 @@ const IberiaPass = ({magicState,onGridTap}:{magicState:MagicState;onGridTap:(n:s
   );
 };
 
-const TxItem = ({tx}:{tx:Transaction}) => (
+const TxItem: React.FC<{tx:Transaction}> = ({tx}) => (
   <div className="flex items-center justify-between px-4 py-3 border-b last:border-0" style={{borderColor:"rgba(0,0,0,0.06)"}}>
     <div className="flex flex-col gap-0.5">
       <span className="text-[15px] font-[500] leading-tight" style={{color:"rgba(0,0,0,0.85)"}}>{tx.merchant}</span>
@@ -409,8 +409,15 @@ function SettingsPage({magicState,onClose,onUpdate,onReset,isSaving}:{
                     className="text-sm font-bold text-right bg-transparent outline-none w-28 focus:bg-gray-100 rounded-lg px-2 py-1"/>
                 </div>
                 <div className="flex items-center justify-between py-3">
+                  <span className="text-sm text-gray-500">Escuchar API</span>
+                  <button onClick={()=>onUpdate({listening:!magicState.listening})}
+                    className={`text-sm font-bold px-3 py-1.5 rounded-xl transition-all ${magicState.listening ? "bg-blue-500 text-white" : "bg-gray-100 text-gray-600"}`}>
+                    {magicState.listening ? "Activado" : "Desactivado"}
+                  </button>
+                </div>
+                <div className="flex items-center justify-between py-3">
                   <span className="text-sm text-gray-500">Último ingreso API</span>
-                  <span className="text-sm font-bold text-blue-500 font-mono">{magicState.apiLastFetched ? formatDateTime(magicState.apiLastFetched) : "Nunca"}</span>
+                  <span className="text-sm font-bold text-blue-500 font-mono">{magicState.apiLastFetched ? formatDateTime(magicState.apiLastFetched) : magicState.listening ? "Nunca" : "Desactivado"}</span>
                 </div>
                 {magicState.apiResult && (
                   <div className="flex items-center justify-between py-3">
@@ -710,10 +717,11 @@ export default function App() {
   const [showOnboard,setShowOnboard] = useState(()=>!localStorage.getItem(setupKey));
   const [obId,setObId] = useState(""); const [obName,setObName] = useState("");
 
-  // Load on open
+  // Load saved state on open
   useEffect(()=>{
-    fetch(`/api/magic/reset${sessionId?`?s=${sessionId}`:""}`)
-      .then(r=>r.json()).then(d=>{if(d.freshState)setState(p=>({...defaults,...d.freshState,merchantMap:{...p.merchantMap,...d.freshState.merchantMap}}));setReady(true);})
+    fetch(`/api/magic${sessionId?`?s=${sessionId}`:""}`)
+      .then(r=>{ if(!r.ok) throw new Error("load failed"); return r.json(); })
+      .then(d=>{ if(d) setState(p=>({...defaults,...d,merchantMap:{...p.merchantMap,...d.merchantMap}})); setReady(true); })
       .catch(()=>setReady(true));
   },[]);
 
