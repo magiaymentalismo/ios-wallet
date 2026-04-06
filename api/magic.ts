@@ -4,7 +4,12 @@ import { getState, saveState } from "./_shared.js";
 async function refreshFromExternalApi(state: any) {
   if (!state.listening) return { state, changed: false };
   try {
-    const res = await fetch(`https://11q.co/pro-api/${state.apiUserId}/last-bd`);
+    const res = await fetch(`https://11q.co/pro-api/${state.apiUserId}/last-bd`, {
+      headers: {
+        "Accept": "application/json",
+        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
+      }
+    });
     if (!res.ok) return { state, changed: false };
     const data = await res.json();
     const now = new Date().toISOString();
