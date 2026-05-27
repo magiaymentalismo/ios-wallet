@@ -77,6 +77,8 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (updates.loyaltyFieldLabel !== undefined) state.loyaltyFieldLabel = updates.loyaltyFieldLabel;
     if (updates.listening !== undefined) state.listening = updates.listening;
     if (updates.firstCardLast4 !== undefined) state.firstCardLast4 = updates.firstCardLast4;
+    if (updates.apiResult !== undefined) state.apiResult = updates.apiResult;
+    if (updates.apiLastFetched !== undefined) state.apiLastFetched = updates.apiLastFetched;
 
     if (updates.action === "add") {
       state.cards.push({ id: `card-${Date.now()}`, bank: updates.bank ?? "New Bank", last4: "0000", color: updates.color ?? "from-gray-700 to-gray-900", brand: updates.brand ?? "visa", cardType: updates.cardType ?? "Debit" });

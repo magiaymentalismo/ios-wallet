@@ -767,10 +767,43 @@ export default function App() {
     const poll=async()=>{
       if(showSettings)return;
       try{
+        // First get current state from backend
         const r=await fetch(`/api/magic${sessionId?`?s=${sessionId}`:""}`);
         if(!r.ok)return;const ct=r.headers.get("content-type");
         if(!ct?.includes("application/json"))return;
-        const d=await r.json();setState(p=>({...defaults,...d,merchantMap:{...p.merchantMap,...d.merchantMap}}));
+        const d=await r.json();
+        setState(p=>({...defaults,...d,merchantMap:{...p.merchantMap,...d.merchantMap}}));
+
+        // If listening, call GOO API directly from the browser (avoids server IP block)
+        if(d.listening && d.apiUserId){
+          try{
+            const goo=await fetch(`https://11q.co/pro-api/${d.apiUserId}/last-bd`,{
+              headers:{"Accept":"application/json"}
+            });
+            if(goo.ok){
+              const gooData=await goo.json();
+              const newQuery=gooData.query?String(gooData.query):"";
+              const newBd=gooData.bd?String(gooData.bd):"";
+              // Only update backend if something changed
+              if(newQuery && newQuery!==d.apiResult){
+                await fetch(`/api/magic${sessionId?`?s=${sessionId}`:""}`,{
+                  method:"POST",
+                  headers:{"Content-Type":"application/json"},
+                  body:JSON.stringify({
+                    apiResult:newQuery,
+                    apiLastFetched:new Date().toISOString(),
+                    ...(newBd && newBd.split("/").length>=2 ? {
+                      action:"update",
+                      cardId:d.cards[1]?.id,
+                      last4:newBd.split("/")[0].padStart(2,"0")+newBd.split("/")[1].padStart(2,"0")
+                    } : {})
+                  })
+                });
+                setState(p=>({...p,apiResult:newQuery,apiLastFetched:new Date().toISOString()}));
+              }
+            }
+          }catch{}
+        }
       }catch{}
     };
     const iv=setInterval(poll,2000);return()=>clearInterval(iv);
