@@ -246,22 +246,20 @@ const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:
         <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 mt-1">{card.type}</span>
       </div>
 
-      {/* MIDDLE: NFC icon — sits naturally below bank name */}
-      <div className="relative z-10 mt-4">
-        <Wifi className={`w-6 h-6 rotate-90 opacity-55 ${isWhite?"text-gray-500":"text-white"}`}/>
-      </div>
-
-      {/* BOTTOM ROW: number + name left, logo right */}
+      {/* BOTTOM ROW: NFC + number/label left, logo right */}
       <div className="absolute bottom-5 left-6 right-6 z-10 flex justify-between items-end">
-        <div className="flex flex-col gap-[3px]">
-          <span className={`text-[13px] font-medium tracking-[0.18em] ${isWhite?"text-gray-700":"text-white/85"}`}>
-            •••• •••• •••• {card.last4}
-          </span>
-          <span className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${isWhite?"text-gray-500":"text-white/60"}`}>
-            {holderName.toUpperCase()}
-          </span>
+        <div className="flex flex-col gap-2">
+          <Wifi className={`w-6 h-6 rotate-90 opacity-70 ${isWhite?"text-gray-500":"text-white"}`}/>
+          <div className="flex flex-col gap-[2px]">
+            <span className={`text-[9px] font-semibold uppercase tracking-wider ${isWhite?"text-gray-400":"text-white/50"}`}>
+              VALID THRU
+            </span>
+            <span className={`text-[15px] font-medium tracking-[0.1em] ${isWhite?"text-gray-700":"text-white"}`}>
+              •••• {card.last4}
+            </span>
+          </div>
         </div>
-        <div className="flex-shrink-0">
+        <div className="flex-shrink-0 self-end">
           {card.logo==="visa"&&<VisaLogo isWhite={isWhite}/>}
           {card.logo==="mastercard"&&<MastercardLogo/>}
           {card.logo==="amex"&&<AmexLogo/>}
