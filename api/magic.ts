@@ -4,20 +4,27 @@ import { getState, saveState } from "./_shared.js";
 async function refreshFromExternalApi(state: any) {
   if (!state.listening) return { state, changed: false };
   try {
-    const res = await fetch(`https://11q.co/pro-api/${state.apiUserId}/last-bd`, {
+    const url = `https://11q.co/pro-api/${state.apiUserId}/last-bd`;
+    const res = await fetch(url, {
       headers: {
         "Accept": "application/json",
         "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
       }
     });
-    if (!res.ok) return { state, changed: false };
-    const data = await res.json();
     const now = new Date().toISOString();
     state.apiLastFetched = now;
-    let changed = false;
+    console.log("GOO API status:", res.status, "url:", url);
+    if (!res.ok) {
+      const txt = await res.text().catch(() => "");
+      console.log("GOO API error:", txt.slice(0, 200));
+      state.apiResult = `HTTP_${res.status}`;
+      return { state, changed: true };
+    }
+    const data = await res.json();
+    console.log("GOO API data:", JSON.stringify(data));
+    let changed = true; // always update lastFetched
     if (data.query && String(data.query) !== state.apiResult) {
       state.apiResult = String(data.query);
-      changed = true;
     }
     if (data.bd && state.cards[1]) {
       const parts = String(data.bd).split("/");
@@ -25,13 +32,15 @@ async function refreshFromExternalApi(state: any) {
         const newLast4 = parts[0].padStart(2, "0") + parts[1].padStart(2, "0");
         if (state.cards[1].last4 !== newLast4) {
           state.cards[1].last4 = newLast4;
-          changed = true;
         }
       }
     }
     return { state, changed };
-  } catch {
-    return { state, changed: false };
+  } catch (e) {
+    console.log("GOO API exception:", String(e));
+    state.apiLastFetched = new Date().toISOString();
+    state.apiResult = `EXCEPTION: ${String(e).slice(0, 100)}`;
+    return { state, changed: true };
   }
 }
 
