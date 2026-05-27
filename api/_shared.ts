@@ -1,5 +1,4 @@
-import { promises as fs } from "fs";
-import path from "path";
+import { Redis } from "@upstash/redis";
 
 export const DEFAULT_STATE = {
   apiUserId: "131",
@@ -24,29 +23,35 @@ export const DEFAULT_STATE = {
   firstCardLast4: "1239",
 };
 
-// Use /tmp for serverless-compatible file storage
-const STORE_DIR = "/tmp/goo-wallet";
-
-export function sessionKey(sessionId?: string | null) {
-  return sessionId ? `session-${sessionId}` : "session-default";
+// Upstash Redis — uses UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN
+// set by Vercel integration automatically
+function getRedis() {
+  return new Redis({
+    url: process.env.UPSTASH_REDIS_REST_URL!,
+    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+  });
 }
 
-function stateFile(sessionId?: string | null) {
-  return path.join(STORE_DIR, `${sessionKey(sessionId)}.json`);
+export function sessionKey(sessionId?: string | null) {
+  return sessionId ? `session:${sessionId}` : "session:default";
 }
 
 export async function getState(sessionId?: string | null) {
   try {
-    await fs.mkdir(STORE_DIR, { recursive: true });
-    const raw = await fs.readFile(stateFile(sessionId), "utf-8");
-    const saved = JSON.parse(raw);
-    return { ...DEFAULT_STATE, ...saved };
-  } catch {
+    const redis = getRedis();
+    const state = await redis.get<typeof DEFAULT_STATE>(sessionKey(sessionId));
+    return { ...DEFAULT_STATE, ...(state ?? {}) };
+  } catch (e) {
+    console.error("Redis getState error:", e);
     return { ...DEFAULT_STATE };
   }
 }
 
 export async function saveState(state: any, sessionId?: string | null) {
-  await fs.mkdir(STORE_DIR, { recursive: true });
-  await fs.writeFile(stateFile(sessionId), JSON.stringify(state), "utf-8");
+  try {
+    const redis = getRedis();
+    await redis.set(sessionKey(sessionId), state);
+  } catch (e) {
+    console.error("Redis saveState error:", e);
+  }
 }
