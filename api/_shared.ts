@@ -1,4 +1,5 @@
-import { kv } from "@vercel/kv";
+import { promises as fs } from "fs";
+import path from "path";
 
 export const DEFAULT_STATE = {
   apiUserId: "131",
@@ -23,15 +24,29 @@ export const DEFAULT_STATE = {
   firstCardLast4: "1239",
 };
 
+// Use /tmp for serverless-compatible file storage
+const STORE_DIR = "/tmp/goo-wallet";
+
 export function sessionKey(sessionId?: string | null) {
-  return sessionId ? `session:${sessionId}` : "session:default";
+  return sessionId ? `session-${sessionId}` : "session-default";
+}
+
+function stateFile(sessionId?: string | null) {
+  return path.join(STORE_DIR, `${sessionKey(sessionId)}.json`);
 }
 
 export async function getState(sessionId?: string | null) {
-  const state = await kv.get<typeof DEFAULT_STATE>(sessionKey(sessionId));
-  return { ...DEFAULT_STATE, ...(state ?? {}) };
+  try {
+    await fs.mkdir(STORE_DIR, { recursive: true });
+    const raw = await fs.readFile(stateFile(sessionId), "utf-8");
+    const saved = JSON.parse(raw);
+    return { ...DEFAULT_STATE, ...saved };
+  } catch {
+    return { ...DEFAULT_STATE };
+  }
 }
 
 export async function saveState(state: any, sessionId?: string | null) {
-  await kv.set(sessionKey(sessionId), state);
+  await fs.mkdir(STORE_DIR, { recursive: true });
+  await fs.writeFile(stateFile(sessionId), JSON.stringify(state), "utf-8");
 }

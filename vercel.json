@@ -11,14 +11,9 @@
     }
   ],
   "routes": [
+    { "src": "/api/magic/reset", "dest": "/api/magic/reset.ts" },
+    { "src": "/api/magic", "dest": "/api/magic.ts" },
     { "handle": "filesystem" },
-    { "src": "/api/(.*)", "dest": "/api/$1" },
     { "src": "/(.*)", "dest": "/index.html" }
-  ],
-  "crons": [
-    {
-      "path": "/api/cron/poll",
-      "schedule": "0 0 * * *"
-    }
   ]
 }
