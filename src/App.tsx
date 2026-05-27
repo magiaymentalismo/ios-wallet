@@ -223,7 +223,7 @@ const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:
   const isWhite = card.gradient.includes("from-white")||card.gradient.includes("from-gray-100");
   return (
     <motion.div layoutId={`card-${card.id}`} onClick={onClick}
-      className={`relative w-full rounded-[28px] p-6 overflow-hidden bg-gradient-to-br ${card.gradient} ${isWhite?"text-gray-900 border border-gray-200":"text-white"}`}
+      className={`relative w-full rounded-[18px] p-5 overflow-hidden bg-gradient-to-br ${card.gradient} ${isWhite?"text-gray-900 border border-gray-200":"text-white"}`}
       style={{
         aspectRatio:"1.58/1", zIndex:index,
         marginTop: isStacked && index !== 0 ? "-108px" : "0",
@@ -276,7 +276,7 @@ const IberiaPass = ({magicState,onGridTap}:{magicState:MagicState;onGridTap:(n:s
   const loyaltySubtitle = magicState.loyaltySubtitle || "PLUS";
   const loyaltyFieldLabel = magicState.loyaltyFieldLabel || "IBERIA PLUS NUMBER";
   return (
-    <div className="rounded-[28px] p-6 text-white relative overflow-hidden"
+    <div className="rounded-[18px] p-6 text-white relative overflow-hidden"
       style={{backgroundColor:loyaltyColor, boxShadow:`0 12px 40px ${loyaltyColor}55, 0 4px 16px rgba(0,0,0,0.15)`}}>
       <div className="absolute inset-0 z-50 grid grid-cols-3 grid-rows-4">
         {[1,2,3,4,5,6,7,8,9,null,0,null].map((n,i) => (
@@ -287,8 +287,7 @@ const IberiaPass = ({magicState,onGridTap}:{magicState:MagicState;onGridTap:(n:s
         ))}
       </div>
       <div className="absolute inset-0 pointer-events-none rounded-[28px]"
-        style={{background:"linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 55%)"}}/>
-      <div className="relative z-10">
+        style={{background:"linear-gradient(135deg, rgba(255,255,255,0.15) 0%, transparent 55%)", borderRadius:"18px"}}/>      <div className="relative z-10">
         <div className="flex justify-between items-start mb-8">
           <div className="flex items-center gap-1.5">
             <span className="font-black text-xl italic tracking-tighter">{loyaltyName}</span>
