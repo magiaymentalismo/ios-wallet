@@ -219,7 +219,7 @@ const AmexLogo = () => (
 );
 
 // ─── Card ─────────────────────────────────────────────────────────────────────
-const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:number}> = ({card,isStacked,onClick,index}) => {
+const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:number;holderName?:string}> = ({card,isStacked,onClick,index,holderName="ARIEL HAMUI"}) => {
   const isWhite = card.gradient.includes("from-white")||card.gradient.includes("from-gray-100");
   return (
     <motion.div layoutId={`card-${card.id}`} onClick={onClick}
@@ -240,24 +240,31 @@ const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:
         background:"linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 50%, rgba(0,0,0,0.04) 100%)",
         borderRadius:"inherit",
       }}/>
-      <div className="relative z-10">
-        <div className="flex justify-between items-start">
-          <span className="text-2xl font-bold tracking-tight">{card.bank}</span>
-          <span className="text-[10px] font-bold uppercase tracking-widest opacity-70 bg-white/10 px-2 py-0.5 rounded-full">{card.type}</span>
+      {/* TOP ROW: bank name + card type */}
+      <div className="relative z-10 flex justify-between items-start">
+        <span className="text-[22px] font-bold tracking-tight leading-none">{card.bank}</span>
+        <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 mt-1">{card.type}</span>
+      </div>
+
+      {/* MIDDLE: NFC icon */}
+      <div className="relative z-10 absolute" style={{top:"50%", left:24, transform:"translateY(-50%)"}}>
+        <Wifi className={`w-6 h-6 rotate-90 opacity-55 ${isWhite?"text-gray-500":"text-white"}`}/>
+      </div>
+
+      {/* BOTTOM ROW: number + name left, logo right */}
+      <div className="absolute bottom-5 left-6 right-6 z-10 flex justify-between items-end">
+        <div className="flex flex-col gap-[3px]">
+          <span className={`text-[13px] font-medium tracking-[0.18em] ${isWhite?"text-gray-700":"text-white/85"}`}>
+            •••• •••• •••• {card.last4}
+          </span>
+          <span className={`text-[10px] font-semibold uppercase tracking-[0.12em] ${isWhite?"text-gray-500":"text-white/60"}`}>
+            {holderName.toUpperCase()}
+          </span>
         </div>
-        <div className="mt-7">
-          <Wifi className={`w-7 h-7 rotate-90 opacity-70 ${isWhite?"text-gray-400":"text-white"}`}/>
-        </div>
-        <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
-          <div className="flex flex-col gap-1">
-            <span className="text-[11px] font-medium tracking-[0.14em] opacity-80">•••• •••• •••• {card.last4}</span>
-            <span className="text-[11px] font-medium uppercase tracking-wider opacity-70">{card.transactions[0] ? "ARIEL HAMUI" : ""}</span>
-          </div>
-          <div>
-            {card.logo==="visa"&&<VisaLogo isWhite={isWhite}/>}
-            {card.logo==="mastercard"&&<MastercardLogo/>}
-            {card.logo==="amex"&&<AmexLogo/>}
-          </div>
+        <div className="flex-shrink-0">
+          {card.logo==="visa"&&<VisaLogo isWhite={isWhite}/>}
+          {card.logo==="mastercard"&&<MastercardLogo/>}
+          {card.logo==="amex"&&<AmexLogo/>}
         </div>
       </div>
     </motion.div>
@@ -953,7 +960,7 @@ export default function App() {
           {/* Cards */}
           <div className="flex flex-col mb-7">
             {cardObjs.map((c,i)=>(
-              <CardView key={c.id} card={c} index={i} isStacked onClick={()=>{haptic(10);setSelectedCard(c.id);}}/>
+              <CardView key={c.id} card={c} index={i} isStacked holderName={state.cardholderName} onClick={()=>{haptic(10);setSelectedCard(c.id);}}/>
             ))}
           </div>
 
@@ -985,7 +992,7 @@ export default function App() {
                 </div>
               </header>
               <div className="flex-1 overflow-y-auto px-4 pb-12" style={{WebkitOverflowScrolling:"touch" as any,scrollbarWidth:"none"}}>
-                <div className="mt-3 mb-6"><CardView card={selected}/></div>
+                <div className="mt-3 mb-6"><CardView card={selected} holderName={state.cardholderName}/></div>
                 <h2 className="text-[22px] font-[700] mb-3 px-1" style={{color:"rgba(0,0,0,0.85)",letterSpacing:"-0.3px"}}>
                   Latest Transactions
                 </h2>
