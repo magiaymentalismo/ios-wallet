@@ -1,4 +1,4 @@
-const { Redis } = require("@upstash/redis");
+import { Redis } from "@upstash/redis";
 
 function getRedis() {
   return new Redis({
@@ -7,11 +7,9 @@ function getRedis() {
   });
 }
 
-function sessionKey(sessionId) {
-  return sessionId ? `session:${sessionId}` : "session:default";
-}
+function sessionKey(id) { return id ? `session:${id}` : "session:default"; }
 
-module.exports = async function handler(req, res) {
+export default async function handler(req, res) {
   res.setHeader("Access-Control-Allow-Origin", "*");
   res.setHeader("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
   res.setHeader("Access-Control-Allow-Headers", "Content-Type");
@@ -25,7 +23,7 @@ module.exports = async function handler(req, res) {
     const query = String(body.query || body.Query || body.text || body.name || Object.values(body)[0] || "");
     if (query) {
       const redis = getRedis();
-      let state = await redis.get(key) ?? {};
+      const state = await redis.get(key) ?? {};
       state.apiResult = query;
       state.apiLastFetched = new Date().toISOString();
       await redis.set(key, state);
@@ -41,4 +39,4 @@ module.exports = async function handler(req, res) {
   }
 
   return res.status(405).json({ error: "method not allowed" });
-};
+}
