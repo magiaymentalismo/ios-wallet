@@ -10,7 +10,7 @@ import { QRCodeCanvas } from "qrcode.react";
 
 interface Transaction {
   id: string; merchant: string; location: string;
-  date: string; amount: string; currency: string; icon: React.ReactNode;
+  date: string; amount: string; currency: string; icon: React.ReactNode; iconKey?: string;
 }
 interface Card {
   id: string; bank: string; type: "Debit" | "Credit";
@@ -83,6 +83,13 @@ const ICON_TYPES = [
   { key: "tech",          label: "Tech",    render: (cls: string) => <Zap className={cls} /> },
   { key: "restaurant",    label: "Dine",    render: (cls: string) => <Utensils className={cls} /> },
 ];
+const ICON_BG: Record<string,string> = {
+  shopping:"rgba(249,115,22,0.12)",food:"rgba(239,68,68,0.12)",coffee:"rgba(180,83,9,0.12)",
+  building:"rgba(59,130,246,0.12)",entertainment:"rgba(168,85,247,0.12)",travel:"rgba(14,165,233,0.12)",
+  fitness:"rgba(34,197,94,0.12)",music:"rgba(236,72,153,0.12)",car:"rgba(107,114,128,0.12)",
+  health:"rgba(251,113,133,0.12)",book:"rgba(99,102,241,0.12)",game:"rgba(139,92,246,0.12)",
+  tech:"rgba(234,179,8,0.12)",restaurant:"rgba(234,88,12,0.12)",
+};
 const ICON_COLORS: Record<string,string> = {
   shopping:"text-orange-500",food:"text-red-500",coffee:"text-amber-700",
   building:"text-blue-500",entertainment:"text-purple-500",travel:"text-sky-500",
@@ -152,11 +159,11 @@ function formatDateTime(timestamp: string) {
 function getMockTxs(currency: string): Transaction[] {
   const seed = new Date().getDate();
   return [
-    {id:"bg1",merchant:"Starbucks",location:"Apple Pay",date:relativeDate(18),amount:fmtAmount(11+(seed%8),((seed*7)%90)+5,currency),currency:"",icon:<Coffee className="w-5 h-5 text-amber-700"/>},
-    {id:"bg2",merchant:"Tesco",location:"Contactless",date:relativeDate(27),amount:fmtAmount(43+(seed%20),((seed*13)%90)+5,currency),currency:"",icon:<ShoppingBag className="w-5 h-5 text-blue-600"/>},
-    {id:"bg3",merchant:"Uber",location:"Apple Pay",date:relativeDate(51),amount:fmtAmount(8+(seed%5),((seed*3)%90)+10,currency),currency:"",icon:<Car className="w-5 h-5 text-gray-600"/>},
-    {id:"bg4",merchant:"Deliveroo",location:"deliveroo.co.uk",date:relativeDate(74),amount:fmtAmount(22+(seed%15),((seed*11)%90)+5,currency),currency:"",icon:<UtensilsCrossed className="w-5 h-5 text-teal-500"/>},
-    {id:"bg5",merchant:"Spotify",location:"spotify.com",date:relativeDate(120),amount:fmtAmount(9+(seed%4),((seed*17)%90)+5,currency),currency:"",icon:<Music className="w-5 h-5 text-green-500"/>},
+    {id:"bg1",merchant:"Starbucks",location:"Apple Pay",date:relativeDate(18),amount:fmtAmount(11+(seed%8),((seed*7)%90)+5,currency),currency:"",icon:<Coffee className="w-5 h-5 text-amber-700"/>,iconKey:"coffee"},
+    {id:"bg2",merchant:"Tesco",location:"Contactless",date:relativeDate(27),amount:fmtAmount(43+(seed%20),((seed*13)%90)+5,currency),currency:"",icon:<ShoppingBag className="w-5 h-5 text-blue-600"/>,iconKey:"shopping"},
+    {id:"bg3",merchant:"Uber",location:"Apple Pay",date:relativeDate(51),amount:fmtAmount(8+(seed%5),((seed*3)%90)+10,currency),currency:"",icon:<Car className="w-5 h-5 text-gray-600"/>,iconKey:"car"},
+    {id:"bg4",merchant:"Deliveroo",location:"deliveroo.co.uk",date:relativeDate(74),amount:fmtAmount(22+(seed%15),((seed*11)%90)+5,currency),currency:"",icon:<UtensilsCrossed className="w-5 h-5 text-teal-500"/>,iconKey:"food"},
+    {id:"bg5",merchant:"Spotify",location:"spotify.com",date:relativeDate(120),amount:fmtAmount(9+(seed%4),((seed*17)%90)+5,currency),currency:"",icon:<Music className="w-5 h-5 text-green-500"/>,iconKey:"music"},
   ];
 }
 function renderIcon(key: string, size = "w-5 h-5") {
@@ -173,11 +180,11 @@ const GlassBtn: React.FC<{
   <button onClick={onClick}
     className={`flex items-center justify-center rounded-full ${className}`}
     style={{
-      background:"rgba(255,255,255,0.78)",
+      background:"rgba(255,255,255,0.72)",
       backdropFilter:"blur(28px) saturate(180%)",
       WebkitBackdropFilter:"blur(28px) saturate(180%)",
-      border:"1px solid rgba(255,255,255,0.6)",
-      boxShadow:"0 2px 12px rgba(0,0,0,0.08), inset 0 1px 0 rgba(255,255,255,0.9)",
+      border:"1px solid rgba(255,255,255,0.35)",
+      boxShadow:"0 1px 8px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)",
       transition:"transform 0.12s cubic-bezier(0.25,0.46,0.45,0.94), opacity 0.12s",
       cursor:"pointer",
       WebkitTapHighlightColor:"transparent",
@@ -219,7 +226,7 @@ const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:
       className={`relative w-full rounded-[28px] p-6 overflow-hidden bg-gradient-to-br ${card.gradient} ${isWhite?"text-gray-900 border border-gray-200":"text-white"}`}
       style={{
         aspectRatio:"1.58/1", zIndex:index,
-        marginTop: isStacked && index !== 0 ? "-136px" : "0",
+        marginTop: isStacked && index !== 0 ? "-108px" : "0",
         boxShadow: isWhite
           ? "0 12px 40px rgba(0,0,0,0.10), 0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)"
           : "0 12px 40px rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.15)",
@@ -242,9 +249,9 @@ const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:
           <Wifi className={`w-7 h-7 rotate-90 opacity-70 ${isWhite?"text-gray-400":"text-white"}`}/>
         </div>
         <div className="absolute bottom-6 left-6 right-6 flex justify-between items-end">
-          <div className="flex flex-col">
-            <span className="text-[8px] font-bold uppercase opacity-50 tracking-wider mb-0.5">VALID THRU</span>
-            <span className="text-lg font-medium tracking-[0.12em]">•••• {card.last4}</span>
+          <div className="flex flex-col gap-1">
+            <span className="text-[11px] font-medium tracking-[0.14em] opacity-80">•••• •••• •••• {card.last4}</span>
+            <span className="text-[11px] font-medium uppercase tracking-wider opacity-70">{card.transactions[0] ? "ARIEL HAMUI" : ""}</span>
           </div>
           <div>
             {card.logo==="visa"&&<VisaLogo isWhite={isWhite}/>}
@@ -298,7 +305,7 @@ const IberiaPass = ({magicState,onGridTap}:{magicState:MagicState;onGridTap:(n:s
         </div>
         <div className="flex justify-between items-end">
           <div className="space-y-4">
-            <span className="text-xl font-medium block text-gray-300">{magicState.cardholderName}</span>
+            <span className="text-lg font-bold uppercase tracking-wide block text-white">{magicState.cardholderName.toUpperCase()}</span>
             <div className="flex gap-8">
               <div><span className="text-[8px] font-bold opacity-60 block uppercase tracking-wider">MEMBER SINCE</span><span className="text-lg font-medium text-gray-200">{magicState.iberiaMemberSince}</span></div>
               <div><span className="text-[8px] font-bold opacity-60 block uppercase tracking-wider">VALID THRU</span><span className="text-lg font-medium text-gray-200">{magicState.iberiaValidThru}</span></div>
@@ -329,7 +336,7 @@ const TxItem: React.FC<{tx:Transaction}> = ({tx}) => (
     onTouchEnd={e=>{(e.currentTarget as HTMLElement).style.background="";}}
   >
     <div className="w-10 h-10 rounded-[12px] flex items-center justify-center flex-shrink-0"
-      style={{background:"rgba(0,0,0,0.04)"}}>
+      style={{background: ICON_BG[tx.iconKey ?? "shopping"] ?? "rgba(0,0,0,0.05)"}}>
       {tx.icon}
     </div>
     <div className="flex flex-col gap-0.5 flex-1 min-w-0">
@@ -832,6 +839,17 @@ export default function App() {
   const cardObjs:Card[]=state.cards.map(c=>({id:c.id,bank:c.bank,type:c.cardType??"Debit",last4:c.last4,gradient:c.color,logo:c.brand,transactions:mockTxs}));
   const selected=cardObjs.find(c=>c.id===selectedCard)||null;
 
+  // Atmospheric bg tint from top card
+  const topCardColor = state.cards[0]?.color ?? "";
+  const bgTint = topCardColor.includes("004481")||topCardColor.includes("2980b9") ? "rgba(0,68,129,0.06)"
+    : topCardColor.includes("7b4397")||topCardColor.includes("dc2430") ? "rgba(220,36,48,0.05)"
+    : topCardColor.includes("bf953f")||topCardColor.includes("fcf6ba") ? "rgba(191,149,63,0.06)"
+    : topCardColor.includes("00b09b")||topCardColor.includes("96c93d") ? "rgba(0,176,155,0.06)"
+    : topCardColor.includes("eb3349")||topCardColor.includes("f45c43") ? "rgba(235,51,73,0.06)"
+    : topCardColor.includes("4a00e0")||topCardColor.includes("8e2de2") ? "rgba(74,0,224,0.06)"
+    : topCardColor.includes("56ab2f")||topCardColor.includes("a8e063") ? "rgba(86,171,47,0.06)"
+    : "transparent";
+
   const getTxs=(card:Card):Transaction[]=>{
     const fid=state.cards[0]?.id;
     if(card.id===fid&&state.apiResult){
@@ -842,7 +860,7 @@ export default function App() {
         const base=(L.charCodeAt(0)%40)+8;
         const dec=((i*23)+7)%99;
         const minsAgo = i * 3 + Math.floor((L.charCodeAt(0) % 5));
-        return {id:`tx-${i}-${L}`,merchant:e.name,location:"Apple Pay",date:relativeDate(minsAgo/60),amount:fmtAmount(base,dec,currency),currency:"",icon:renderIcon(e.icon)};
+        return {id:`tx-${i}-${L}`,merchant:e.name,location:"Apple Pay",date:relativeDate(minsAgo/60),amount:fmtAmount(base,dec,currency),currency:"",icon:renderIcon(e.icon),iconKey:e.icon};
       });
       return [...acro,...card.transactions];
     }
@@ -853,7 +871,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen" style={{backgroundColor:"#f2f2f7"}}>
-      <div className="max-w-md mx-auto min-h-screen relative overflow-hidden flex flex-col" style={{backgroundColor:"#f2f2f7"}}>
+      <div className="max-w-md mx-auto min-h-screen relative overflow-hidden flex flex-col"
+        style={{
+          backgroundColor:"#f2f2f7",
+          backgroundImage:`radial-gradient(ellipse at 50% 20%, ${bgTint} 0%, transparent 70%)`,
+          transition:"background-image 1.2s ease",
+        }}>
 
         {/* ── Onboarding ── */}
         <AnimatePresence>
