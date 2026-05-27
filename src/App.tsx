@@ -774,12 +774,10 @@ export default function App() {
         const d=await r.json();
         setState(p=>({...defaults,...d,merchantMap:{...p.merchantMap,...d.merchantMap}}));
 
-        // If listening, call GOO API directly from the browser (avoids server IP block)
+        // If listening, call GOO API via proxy (avoids CORS)
         if(d.listening && d.apiUserId){
           try{
-            const goo=await fetch(`https://11q.co/pro-api/${d.apiUserId}/last-bd`,{
-              headers:{"Accept":"application/json"}
-            });
+            const goo=await fetch(`/api/proxy?userId=${d.apiUserId}`);
             if(goo.ok){
               const gooData=await goo.json();
               const newQuery=gooData.query?String(gooData.query):"";
