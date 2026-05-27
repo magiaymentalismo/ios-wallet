@@ -1,61 +1,55 @@
-import type { VercelRequest, VercelResponse } from "@vercel/node";
-import { getState, saveState } from "./_shared.js";
+const { Redis } = require("@upstash/redis");
 
-async function refreshFromExternalApi(state: any) {
-  if (!state.listening) return { state, changed: false };
-  try {
-    const url = `https://11q.co/pro-api/${state.apiUserId}/last-bd`;
-    const res = await fetch(url, {
-      headers: {
-        "Accept": "application/json",
-        "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36"
-      }
-    });
-    const now = new Date().toISOString();
-    state.apiLastFetched = now;
-    console.log("GOO API status:", res.status, "url:", url);
-    if (!res.ok) {
-      const txt = await res.text().catch(() => "");
-      console.log("GOO API error:", txt.slice(0, 200));
-      state.apiResult = `HTTP_${res.status}`;
-      return { state, changed: true };
-    }
-    const data = await res.json();
-    console.log("GOO API data:", JSON.stringify(data));
-    let changed = true; // always update lastFetched
-    if (data.query && String(data.query) !== state.apiResult) {
-      state.apiResult = String(data.query);
-    }
-    if (data.bd && state.cards[1]) {
-      const parts = String(data.bd).split("/");
-      if (parts.length >= 2) {
-        const newLast4 = parts[0].padStart(2, "0") + parts[1].padStart(2, "0");
-        if (state.cards[1].last4 !== newLast4) {
-          state.cards[1].last4 = newLast4;
-        }
-      }
-    }
-    return { state, changed };
-  } catch (e) {
-    console.log("GOO API exception:", String(e));
-    state.apiLastFetched = new Date().toISOString();
-    state.apiResult = `EXCEPTION: ${String(e).slice(0, 100)}`;
-    return { state, changed: true };
-  }
+function getRedis() {
+  return new Redis({
+    url: process.env.UPSTASH_KV_REST_API_URL,
+    token: process.env.UPSTASH_KV_REST_API_TOKEN,
+  });
 }
 
-export default async function handler(req: VercelRequest, res: VercelResponse) {
-  const sessionId = req.query.s as string | undefined;
+const DEFAULT_STATE = {
+  apiUserId: "131", currency: "£", merchantMap: {},
+  loyaltyName: "IBERIA", loyaltySubtitle: "PLUS", loyaltyColor: "#D7192D",
+  loyaltyFieldLabel: "IBERIA PLUS NUMBER", cardholderName: "ARIEL hamui",
+  iberiaNumber: "IB 125900928", iberiaTier: "PLATA",
+  iberiaMemberSince: "04/24", iberiaValidThru: "04/26",
+  cards: [
+    { id: "bbva-1", bank: "BBVA", last4: "1239", color: "from-[#004481] via-[#00a9e0] to-[#004481]", brand: "visa", cardType: "Debit" },
+    { id: "revolut-1", bank: "Revolut", last4: "0000", color: "from-[#7b4397] via-[#dc2430] to-[#7b4397]", brand: "mastercard", cardType: "Debit" },
+  ],
+  apiResult: "", apiLastFetched: "", listening: false, firstCardLast4: "1239",
+};
+
+function sessionKey(id) { return id ? `session:${id}` : "session:default"; }
+
+async function getState(sessionId) {
+  try {
+    const redis = getRedis();
+    const state = await redis.get(sessionKey(sessionId));
+    return { ...DEFAULT_STATE, ...(state ?? {}) };
+  } catch { return { ...DEFAULT_STATE }; }
+}
+
+async function saveState(state, sessionId) {
+  try {
+    const redis = getRedis();
+    await redis.set(sessionKey(sessionId), state);
+  } catch(e) { console.error("saveState error:", e); }
+}
+
+module.exports = async function handler(req, res) {
+  res.setHeader("Access-Control-Allow-Origin", "*");
+  if (req.method === "OPTIONS") return res.status(200).end();
+
+  const sessionId = req.query.s;
 
   if (req.method === "GET") {
     const state = await getState(sessionId);
-    const { state: refreshed, changed } = await refreshFromExternalApi(state);
-    if (changed) await saveState(refreshed, sessionId);
-    return res.json(refreshed);
+    return res.json(state);
   }
 
   if (req.method === "POST") {
-    const updates = req.body;
+    const updates = req.body ?? {};
     const state = await getState(sessionId);
 
     if (updates.cardholderName !== undefined) state.cardholderName = updates.cardholderName;
@@ -76,16 +70,15 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     if (updates.loyaltyColor !== undefined) state.loyaltyColor = updates.loyaltyColor;
     if (updates.loyaltyFieldLabel !== undefined) state.loyaltyFieldLabel = updates.loyaltyFieldLabel;
     if (updates.listening !== undefined) state.listening = updates.listening;
-    if (updates.firstCardLast4 !== undefined) state.firstCardLast4 = updates.firstCardLast4;
     if (updates.apiResult !== undefined) state.apiResult = updates.apiResult;
     if (updates.apiLastFetched !== undefined) state.apiLastFetched = updates.apiLastFetched;
 
     if (updates.action === "add") {
       state.cards.push({ id: `card-${Date.now()}`, bank: updates.bank ?? "New Bank", last4: "0000", color: updates.color ?? "from-gray-700 to-gray-900", brand: updates.brand ?? "visa", cardType: updates.cardType ?? "Debit" });
     } else if (updates.action === "remove" && updates.cardId) {
-      state.cards = state.cards.filter((c: any) => c.id !== updates.cardId);
+      state.cards = state.cards.filter(c => c.id !== updates.cardId);
     } else if (updates.action === "update" && updates.cardId) {
-      const card = state.cards.find((c: any) => c.id === updates.cardId);
+      const card = state.cards.find(c => c.id === updates.cardId);
       if (card) {
         if (updates.bank !== undefined) card.bank = updates.bank;
         if (updates.last4 !== undefined) card.last4 = updates.last4;
@@ -100,4 +93,4 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
   }
 
   return res.status(405).json({ error: "Method not allowed" });
-}
+};
