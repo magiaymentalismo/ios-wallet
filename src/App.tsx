@@ -246,8 +246,8 @@ const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:
         <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 mt-1">{card.type}</span>
       </div>
 
-      {/* MIDDLE: NFC icon */}
-      <div className="relative z-10 absolute" style={{top:"50%", left:24, transform:"translateY(-50%)"}}>
+      {/* MIDDLE: NFC icon — sits naturally below bank name */}
+      <div className="relative z-10 mt-4">
         <Wifi className={`w-6 h-6 rotate-90 opacity-55 ${isWhite?"text-gray-500":"text-white"}`}/>
       </div>
 
