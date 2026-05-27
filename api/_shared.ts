@@ -27,8 +27,8 @@ export const DEFAULT_STATE = {
 // set by Vercel integration automatically
 function getRedis() {
   return new Redis({
-    url: process.env.UPSTASH_REDIS_REST_URL!,
-    token: process.env.UPSTASH_REDIS_REST_TOKEN!,
+    url: process.env.UPSTASH_KV_REST_API_URL!,
+    token: process.env.UPSTASH_KV_REST_API_TOKEN!,
   });
 }
 
