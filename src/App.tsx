@@ -32,7 +32,7 @@ interface MagicState {
 }
 
 const GRADIENTS = [
-  { name: "BBVA Teal",     value: "from-[#2DD4C6] via-[#0F9C90] to-[#075753]" },
+  { name: "BBVA Teal",     value: "from-[#3AACC0] via-[#2E9DB0] to-[#1F7A8C]" },
   { name: "Revolut",       value: "from-[#6D3FC4] via-[#4B4CD1] to-[#2E5FE8]" },
   { name: "Midnight",      value: "from-gray-900 via-gray-800 to-black" },
   { name: "Gold",          value: "from-[#bf953f] via-[#fcf6ba] to-[#b38728]" },
@@ -142,11 +142,11 @@ const GlassBtn: React.FC<{
 );
 
 // ─── Card logos ────────────────────────────────────────────────────────────────
+// Plain wordmark, no colored accents — real embossed card logos are monochrome.
 const VisaLogo = ({isWhite}:{isWhite?:boolean}) => (
-  <svg viewBox="0 15 48 18" className={`w-14 h-auto ${isWhite?"text-[#1A1F71]":"text-white"}`} fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M18.83 31.565h3.048l1.905-11.728h-3.047l-1.906 11.728zM36.14 19.986c-.686-.264-1.752-.55-3.048-.55-3.352 0-5.714 1.782-5.733 4.343-.019 1.887 1.695 2.934 2.98 3.563 1.324.64 1.772 1.054 1.762 1.63-.019.886-1.057 1.287-2.038 1.287-1.362 0-2.095-.207-3.2-.716l-.448-.217-.476 2.963c.8.367 2.276.688 3.81.706 3.561 0 5.875-1.763 5.904-4.494.029-1.498-.895-2.638-2.857-3.572-1.19-.594-1.924-.99-1.924-1.593.01-.546.61-.13 1.124-.13 1.514 0 2.228.273 2.228.273l.267.123.476-2.963-.448-.17zm8.447 0h-2.362c-.733 0-1.286.217-1.6.97l-4.543 10.609h3.2l.638-1.763h3.914l.371 1.763h2.82l-2.438-11.579zm-3.695 6.407l1.667-4.59.952 4.59h-2.619zM12.63 19.837l-2.99 8.01-.362-1.838c-.62-2.11-2.553-4.39-4.714-5.52l3.057 11.076h3.21l4.78-11.728h-2.981z" fill="currentColor"/>
-    <path d="M7.41 19.837H.133l-.038.188c5.657 1.442 9.4 4.937 10.943 9.102l-1.581-7.973c-.267-1.017-1.01-1.281-2.047-1.317z" fill="#F79E1B"/>
-  </svg>
+  <span className={`text-[26px] font-black italic tracking-tight leading-none ${isWhite?"text-[#1A1F71]":"text-white"}`}>
+    VISA
+  </span>
 );
 const MastercardLogo = () => (
   <div className="flex -space-x-3">
@@ -159,6 +159,13 @@ const AmexLogo = () => (
     <span className="text-[8px] font-black text-white leading-none tracking-tighter text-center">AMERICAN<br/>EXPRESS</span>
   </div>
 );
+
+// BBVA's real wordmark ends in a crossbar-less "A" (like a caret); Λ (Greek
+// capital lambda) approximates that shape closely enough without an SVG asset.
+const BANK_NAME_OVERRIDES: Record<string,string> = { BBVA: "BBVΛ" };
+function renderBankName(bank: string) {
+  return BANK_NAME_OVERRIDES[bank.toUpperCase()] ?? bank;
+}
 
 // ─── Card ─────────────────────────────────────────────────────────────────────
 const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:number;holderName?:string}> = ({card,isStacked,onClick,index,holderName="ARIEL HAMUI"}) => {
@@ -180,15 +187,15 @@ const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:
       whileTap={onClick ? { scale: 0.975 } : undefined}
       transition={{ type:"spring", stiffness:400, damping:30 }}
     >
-      {/* Glass sheen */}
+      {/* Glass sheen: a distinct diagonal light band, like a reflection */}
       <div className="absolute inset-0 pointer-events-none" style={{
-        background:"linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 50%, rgba(0,0,0,0.04) 100%)",
+        background:"linear-gradient(115deg, transparent 28%, rgba(255,255,255,0.32) 42%, rgba(255,255,255,0.32) 56%, transparent 70%)",
         borderRadius:"inherit",
       }}/>
       {/* TOP ROW: bank name + card type */}
       <div className="relative z-10 flex justify-between items-start">
-        <span className="text-[22px] font-bold tracking-tight leading-none">{card.bank}</span>
-        <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 mt-1">{card.type==="Credit"?"Crédito":"Débito"}</span>
+        <span className="text-[24px] font-bold tracking-tight leading-none">{renderBankName(card.bank)}</span>
+        <span className="text-[13px] font-semibold mt-1">{card.type==="Credit"?"Crédito":"Débito"}</span>
       </div>
 
       {/* BOTTOM ROW: NFC + number/label left, logo right */}
@@ -199,8 +206,9 @@ const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:
             <span className={`text-[9px] font-semibold uppercase tracking-wider ${isWhite?"text-gray-400":"text-white/50"}`}>
               VÁLIDA HASTA
             </span>
-            <span className={`text-[15px] font-medium tracking-[0.1em] ${isWhite?"text-gray-700":"text-white"}`}>
-              •••• {card.last4}
+            <span className={`flex items-baseline gap-1.5 tracking-[0.15em] ${isWhite?"text-gray-700":"text-white"}`}>
+              <span className="text-[13px] font-medium opacity-80">••••</span>
+              <span className="text-[19px] font-bold">{card.last4}</span>
             </span>
           </div>
         </div>
@@ -664,7 +672,7 @@ export default function App() {
     listening:false,currency:"£",merchantMap:{},apiLastFetched:"",
     loyaltyName:"IBERIA",loyaltySubtitle:"PLUS",loyaltyColor:"#D7192D",loyaltyFieldLabel:"IBERIA PLUS NUMBER",
     cards:[
-      {id:"bbva-1",bank:"BBVA",last4:"1239",color:"from-[#2DD4C6] via-[#0F9C90] to-[#075753]",brand:"visa",cardType:"Debit"},
+      {id:"bbva-1",bank:"BBVA",last4:"1239",color:"from-[#3AACC0] via-[#2E9DB0] to-[#1F7A8C]",brand:"visa",cardType:"Debit"},
       {id:"revolut-1",bank:"Revolut",last4:"0000",color:"from-[#6D3FC4] via-[#4B4CD1] to-[#2E5FE8]",brand:"mastercard",cardType:"Debit"},
     ],
   };
