@@ -7,8 +7,8 @@ export const DEFAULT_STATE = {
   iberiaNumber: "IB 125900928", iberiaTier: "PLATA",
   iberiaMemberSince: "04/24", iberiaValidThru: "04/26",
   cards: [
-    { id: "bbva-1", bank: "BBVA", last4: "1239", color: "from-[#004481] via-[#00a9e0] to-[#004481]", brand: "visa", cardType: "Debit" },
-    { id: "revolut-1", bank: "Revolut", last4: "0000", color: "from-[#7b4397] via-[#dc2430] to-[#7b4397]", brand: "mastercard", cardType: "Debit" },
+    { id: "bbva-1", bank: "BBVA", last4: "1239", color: "from-[#2DD4C6] via-[#0F9C90] to-[#075753]", brand: "visa", cardType: "Debit" },
+    { id: "revolut-1", bank: "Revolut", last4: "0000", color: "from-[#6D3FC4] via-[#4B4CD1] to-[#2E5FE8]", brand: "mastercard", cardType: "Debit" },
   ],
   apiResult: "", apiLastFetched: "", listening: false, firstCardLast4: "1239",
 };

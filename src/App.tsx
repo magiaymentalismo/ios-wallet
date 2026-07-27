@@ -32,8 +32,8 @@ interface MagicState {
 }
 
 const GRADIENTS = [
-  { name: "BBVA Blue",     value: "from-[#004481] via-[#00a9e0] to-[#004481]" },
-  { name: "Revolut",       value: "from-[#7b4397] via-[#dc2430] to-[#7b4397]" },
+  { name: "BBVA Teal",     value: "from-[#2DD4C6] via-[#0F9C90] to-[#075753]" },
+  { name: "Revolut",       value: "from-[#6D3FC4] via-[#4B4CD1] to-[#2E5FE8]" },
   { name: "Midnight",      value: "from-gray-900 via-gray-800 to-black" },
   { name: "Gold",          value: "from-[#bf953f] via-[#fcf6ba] to-[#b38728]" },
   { name: "Silver",        value: "from-[#757F9A] via-[#D7DDE8] to-[#757F9A]" },
@@ -188,7 +188,7 @@ const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:
       {/* TOP ROW: bank name + card type */}
       <div className="relative z-10 flex justify-between items-start">
         <span className="text-[22px] font-bold tracking-tight leading-none">{card.bank}</span>
-        <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 mt-1">{card.type}</span>
+        <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 mt-1">{card.type==="Credit"?"Crédito":"Débito"}</span>
       </div>
 
       {/* BOTTOM ROW: NFC + number/label left, logo right */}
@@ -197,7 +197,7 @@ const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:
           <Wifi className={`w-6 h-6 rotate-90 opacity-70 ${isWhite?"text-gray-500":"text-white"}`}/>
           <div className="flex flex-col gap-[2px]">
             <span className={`text-[9px] font-semibold uppercase tracking-wider ${isWhite?"text-gray-400":"text-white/50"}`}>
-              VALID THRU
+              VÁLIDA HASTA
             </span>
             <span className={`text-[15px] font-medium tracking-[0.1em] ${isWhite?"text-gray-700":"text-white"}`}>
               •••• {card.last4}
@@ -664,8 +664,8 @@ export default function App() {
     listening:false,currency:"£",merchantMap:{},apiLastFetched:"",
     loyaltyName:"IBERIA",loyaltySubtitle:"PLUS",loyaltyColor:"#D7192D",loyaltyFieldLabel:"IBERIA PLUS NUMBER",
     cards:[
-      {id:"bbva-1",bank:"BBVA",last4:"1239",color:"from-[#004481] via-[#00a9e0] to-[#004481]",brand:"visa",cardType:"Debit"},
-      {id:"revolut-1",bank:"Revolut",last4:"0000",color:"from-[#7b4397] via-[#dc2430] to-[#7b4397]",brand:"mastercard",cardType:"Debit"},
+      {id:"bbva-1",bank:"BBVA",last4:"1239",color:"from-[#2DD4C6] via-[#0F9C90] to-[#075753]",brand:"visa",cardType:"Debit"},
+      {id:"revolut-1",bank:"Revolut",last4:"0000",color:"from-[#6D3FC4] via-[#4B4CD1] to-[#2E5FE8]",brand:"mastercard",cardType:"Debit"},
     ],
   };
 
