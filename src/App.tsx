@@ -7,6 +7,10 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeCanvas } from "qrcode.react";
+import {
+  DEFAULT_MERCHANTS, getMockTxData, buildAcrosticData, formatDateTime,
+  type MerchantEntry,
+} from "./lib/wallet-utils";
 
 interface Transaction {
   id: string; merchant: string; location: string;
@@ -20,7 +24,6 @@ interface MagicCard {
   id: string; bank: string; last4: string; color: string;
   brand: "visa" | "mastercard" | "amex"; cardType: "Debit" | "Credit";
 }
-interface MerchantEntry { name: string; icon: string; }
 interface MagicState {
   cardholderName: string; apiResult: string; apiLastFetched: string; apiUserId: string;
   iberiaNumber: string; iberiaTier: string; iberiaMemberSince: string; iberiaValidThru: string;
@@ -29,8 +32,8 @@ interface MagicState {
 }
 
 const GRADIENTS = [
-  { name: "BBVA Blue",     value: "from-[#004481] via-[#00a9e0] to-[#004481]" },
-  { name: "Revolut",       value: "from-[#7b4397] via-[#dc2430] to-[#7b4397]" },
+  { name: "BBVA Teal",     value: "from-[#3AACC0] via-[#2E9DB0] to-[#1F7A8C]" },
+  { name: "Revolut",       value: "from-[#6D3FC4] via-[#4B4CD1] to-[#2E5FE8]" },
   { name: "Midnight",      value: "from-gray-900 via-gray-800 to-black" },
   { name: "Gold",          value: "from-[#bf953f] via-[#fcf6ba] to-[#b38728]" },
   { name: "Silver",        value: "from-[#757F9A] via-[#D7DDE8] to-[#757F9A]" },
@@ -97,74 +100,13 @@ const ICON_COLORS: Record<string,string> = {
   health:"text-red-400",book:"text-indigo-500",game:"text-violet-500",
   tech:"text-yellow-500",restaurant:"text-orange-600",
 };
-const MERCHANT_OPTIONS: Record<string, MerchantEntry[]> = {
-  A:[{name:"Amazon",icon:"shopping"},{name:"Apple Store",icon:"tech"},{name:"Adidas",icon:"fitness"}],
-  B:[{name:"Burger King",icon:"food"},{name:"Boots",icon:"health"},{name:"BBC iPlayer",icon:"entertainment"}],
-  C:[{name:"Costa Coffee",icon:"coffee"},{name:"Currys",icon:"tech"},{name:"Caffe Nero",icon:"coffee"}],
-  D:[{name:"Decathlon",icon:"fitness"},{name:"Deliveroo",icon:"food"},{name:"Disney+",icon:"entertainment"}],
-  E:[{name:"EasyJet",icon:"travel"},{name:"Eat Out",icon:"restaurant"},{name:"Etsy",icon:"shopping"}],
-  F:[{name:"Foot Locker",icon:"fitness"},{name:"Farfetch",icon:"shopping"},{name:"First Direct",icon:"building"}],
-  G:[{name:"Google Play",icon:"tech"},{name:"Gymshark",icon:"fitness"},{name:"Greggs",icon:"food"}],
-  H:[{name:"H&M",icon:"shopping"},{name:"Halfords",icon:"car"},{name:"Hotel Chocolat",icon:"food"}],
-  I:[{name:"IKEA",icon:"building"},{name:"iTunes",icon:"music"},{name:"IHG Hotels",icon:"travel"}],
-  J:[{name:"JD Sports",icon:"fitness"},{name:"John Lewis",icon:"shopping"},{name:"Just Eat",icon:"food"}],
-  K:[{name:"KFC",icon:"food"},{name:"Kindle Store",icon:"book"},{name:"Krispy Kreme",icon:"food"}],
-  L:[{name:"Lyft",icon:"car"},{name:"Lush",icon:"health"},{name:"LEGO Store",icon:"shopping"}],
-  M:[{name:"McDonald's",icon:"food"},{name:"Marks & Spencer",icon:"shopping"},{name:"Moonpig",icon:"shopping"}],
-  N:[{name:"Netflix",icon:"entertainment"},{name:"Nike",icon:"fitness"},{name:"Nero",icon:"coffee"}],
-  O:[{name:"Odeon",icon:"entertainment"},{name:"OFFICE",icon:"shopping"},{name:"Ocado",icon:"food"}],
-  P:[{name:"Pizza Express",icon:"food"},{name:"Pret A Manger",icon:"coffee"},{name:"Primark",icon:"shopping"}],
-  Q:[{name:"Quay Coffee",icon:"coffee"},{name:"Quidco",icon:"building"},{name:"Quorn",icon:"food"}],
-  R:[{name:"Ryanair",icon:"travel"},{name:"Revolut",icon:"building"},{name:"Rough Trade",icon:"music"}],
-  S:[{name:"Starbucks",icon:"coffee"},{name:"Spotify",icon:"music"},{name:"SPAR",icon:"food"}],
-  T:[{name:"Ticketmaster",icon:"entertainment"},{name:"Tesco",icon:"food"},{name:"TfL",icon:"car"}],
-  U:[{name:"Uber",icon:"car"},{name:"Uber Eats",icon:"food"},{name:"UNIQLO",icon:"shopping"}],
-  V:[{name:"Vue Cinema",icon:"entertainment"},{name:"Vinted",icon:"shopping"},{name:"Virgin Active",icon:"fitness"}],
-  W:[{name:"Waterstones",icon:"book"},{name:"Wetherspoons",icon:"food"},{name:"WHSmith",icon:"book"}],
-  X:[{name:"Xbox Store",icon:"game"},{name:"XOXO Bakery",icon:"food"},{name:"Xcel Fitness",icon:"fitness"}],
-  Y:[{name:"Yoga Studio",icon:"fitness"},{name:"YO! Sushi",icon:"food"},{name:"YouTube Premium",icon:"entertainment"}],
-  Z:[{name:"Zara",icon:"shopping"},{name:"Zizzi",icon:"restaurant"},{name:"Zipcar",icon:"car"}],
-};
-
-function pickMerchant(letter: string, customMap: Record<string, MerchantEntry>, idx: number): MerchantEntry {
-  if (customMap[letter]) return customMap[letter];
-  const options = MERCHANT_OPTIONS[letter] ?? [{name:`${letter} Store`,icon:"shopping"}];
-  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(),0,0).getTime()) / 86400000);
-  return options[(dayOfYear + idx) % options.length];
-}
-const DEFAULT_MERCHANTS: Record<string, MerchantEntry> = Object.fromEntries(
-  Object.entries(MERCHANT_OPTIONS).map(([k,v]) => [k, v[0]])
-);
-
-function relativeDate(hoursAgo: number): string {
-  const d = new Date(Date.now() - hoursAgo * 3600000);
-  const now = new Date();
-  const diffH = hoursAgo;
-  const isToday = d.toDateString() === now.toDateString();
-  const diffDays = Math.floor(diffH / 24);
-  if (isToday && diffH < 1) return `${Math.round(diffH * 60)} minutes ago`;
-  if (isToday && diffH < 24) return `${Math.round(diffH)} ${Math.round(diffH) === 1 ? "hour" : "hours"} ago`;
-  if (diffDays <= 4) return d.toLocaleDateString("en-GB", { weekday: "long" });
-  const day = d.getDate(); const month = d.getMonth() + 1; const year = String(d.getFullYear()).slice(-2);
-  return `${day}/${month}/${year}`;
-}
-function fmtAmount(intPart: number, decPart: number, curr: string): string {
-  return `${intPart},${decPart < 10 ? "0" + decPart : decPart} ${curr}`;
-}
-function formatDateTime(timestamp: string) {
-  const d = new Date(timestamp);
-  if (isNaN(d.getTime())) return "Nunca";
-  return d.toLocaleString("es-ES", { day:"2-digit", month:"2-digit", year:"2-digit", hour:"2-digit", minute:"2-digit" });
-}
+// Background transactions + acrostic spelling data live in lib/wallet-utils
+// (pure, unit-tested); icons are attached here since they need JSX.
 function getMockTxs(currency: string): Transaction[] {
-  const seed = new Date().getDate();
-  return [
-    {id:"bg1",merchant:"Starbucks",location:"Apple Pay",date:relativeDate(18),amount:fmtAmount(11+(seed%8),((seed*7)%90)+5,currency),currency:"",icon:<Coffee className="w-5 h-5 text-amber-700"/>,iconKey:"coffee"},
-    {id:"bg2",merchant:"Tesco",location:"Contactless",date:relativeDate(27),amount:fmtAmount(43+(seed%20),((seed*13)%90)+5,currency),currency:"",icon:<ShoppingBag className="w-5 h-5 text-blue-600"/>,iconKey:"shopping"},
-    {id:"bg3",merchant:"Uber",location:"Apple Pay",date:relativeDate(51),amount:fmtAmount(8+(seed%5),((seed*3)%90)+10,currency),currency:"",icon:<Car className="w-5 h-5 text-gray-600"/>,iconKey:"car"},
-    {id:"bg4",merchant:"Deliveroo",location:"deliveroo.co.uk",date:relativeDate(74),amount:fmtAmount(22+(seed%15),((seed*11)%90)+5,currency),currency:"",icon:<UtensilsCrossed className="w-5 h-5 text-teal-500"/>,iconKey:"food"},
-    {id:"bg5",merchant:"Spotify",location:"spotify.com",date:relativeDate(120),amount:fmtAmount(9+(seed%4),((seed*17)%90)+5,currency),currency:"",icon:<Music className="w-5 h-5 text-green-500"/>,iconKey:"music"},
-  ];
+  return getMockTxData(currency).map(t => ({
+    id: t.id, merchant: t.merchant, location: t.location, date: t.date,
+    amount: t.amount, currency: "", icon: renderIcon(t.icon), iconKey: t.icon,
+  }));
 }
 function renderIcon(key: string, size = "w-5 h-5") {
   const t = ICON_TYPES.find(i => i.key === key);
@@ -200,11 +142,11 @@ const GlassBtn: React.FC<{
 );
 
 // ─── Card logos ────────────────────────────────────────────────────────────────
+// Plain wordmark, no colored accents — real embossed card logos are monochrome.
 const VisaLogo = ({isWhite}:{isWhite?:boolean}) => (
-  <svg viewBox="0 15 48 18" className={`w-14 h-auto ${isWhite?"text-[#1A1F71]":"text-white"}`} fill="none" xmlns="http://www.w3.org/2000/svg">
-    <path d="M18.83 31.565h3.048l1.905-11.728h-3.047l-1.906 11.728zM36.14 19.986c-.686-.264-1.752-.55-3.048-.55-3.352 0-5.714 1.782-5.733 4.343-.019 1.887 1.695 2.934 2.98 3.563 1.324.64 1.772 1.054 1.762 1.63-.019.886-1.057 1.287-2.038 1.287-1.362 0-2.095-.207-3.2-.716l-.448-.217-.476 2.963c.8.367 2.276.688 3.81.706 3.561 0 5.875-1.763 5.904-4.494.029-1.498-.895-2.638-2.857-3.572-1.19-.594-1.924-.99-1.924-1.593.01-.546.61-.13 1.124-.13 1.514 0 2.228.273 2.228.273l.267.123.476-2.963-.448-.17zm8.447 0h-2.362c-.733 0-1.286.217-1.6.97l-4.543 10.609h3.2l.638-1.763h3.914l.371 1.763h2.82l-2.438-11.579zm-3.695 6.407l1.667-4.59.952 4.59h-2.619zM12.63 19.837l-2.99 8.01-.362-1.838c-.62-2.11-2.553-4.39-4.714-5.52l3.057 11.076h3.21l4.78-11.728h-2.981z" fill="currentColor"/>
-    <path d="M7.41 19.837H.133l-.038.188c5.657 1.442 9.4 4.937 10.943 9.102l-1.581-7.973c-.267-1.017-1.01-1.281-2.047-1.317z" fill="#F79E1B"/>
-  </svg>
+  <span className={`text-[26px] font-black italic tracking-tight leading-none ${isWhite?"text-[#1A1F71]":"text-white"}`}>
+    VISA
+  </span>
 );
 const MastercardLogo = () => (
   <div className="flex -space-x-3">
@@ -218,6 +160,13 @@ const AmexLogo = () => (
   </div>
 );
 
+// BBVA's real wordmark ends in a crossbar-less "A" (like a caret); Λ (Greek
+// capital lambda) approximates that shape closely enough without an SVG asset.
+const BANK_NAME_OVERRIDES: Record<string,string> = { BBVA: "BBVΛ" };
+function renderBankName(bank: string) {
+  return BANK_NAME_OVERRIDES[bank.toUpperCase()] ?? bank;
+}
+
 // ─── Card ─────────────────────────────────────────────────────────────────────
 const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:number;holderName?:string}> = ({card,isStacked,onClick,index,holderName="ARIEL HAMUI"}) => {
   const isWhite = card.gradient.includes("from-white")||card.gradient.includes("from-gray-100");
@@ -226,7 +175,10 @@ const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:
       className={`relative w-full rounded-[18px] p-5 overflow-hidden bg-gradient-to-br ${card.gradient} ${isWhite?"text-gray-900 border border-gray-200":"text-white"}`}
       style={{
         aspectRatio:"1.58/1", zIndex:index,
-        marginTop: isStacked && index !== 0 ? "-108px" : "0",
+        // Real Wallet shows ~26% of each stacked card peeking out above the
+        // next one; percentage margin-top is relative to width in CSS, which
+        // conveniently is also what the card's own height is derived from.
+        marginTop: isStacked && index !== 0 ? "-47%" : "0",
         boxShadow: isWhite
           ? "0 12px 40px rgba(0,0,0,0.10), 0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)"
           : "0 12px 40px rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.15)",
@@ -235,15 +187,15 @@ const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:
       whileTap={onClick ? { scale: 0.975 } : undefined}
       transition={{ type:"spring", stiffness:400, damping:30 }}
     >
-      {/* Glass sheen */}
+      {/* Glass sheen: a distinct diagonal light band, like a reflection */}
       <div className="absolute inset-0 pointer-events-none" style={{
-        background:"linear-gradient(135deg, rgba(255,255,255,0.18) 0%, transparent 50%, rgba(0,0,0,0.04) 100%)",
+        background:"linear-gradient(115deg, transparent 28%, rgba(255,255,255,0.32) 42%, rgba(255,255,255,0.32) 56%, transparent 70%)",
         borderRadius:"inherit",
       }}/>
       {/* TOP ROW: bank name + card type */}
       <div className="relative z-10 flex justify-between items-start">
-        <span className="text-[22px] font-bold tracking-tight leading-none">{card.bank}</span>
-        <span className="text-[9px] font-bold uppercase tracking-widest opacity-60 mt-1">{card.type}</span>
+        <span className="text-[24px] font-bold tracking-tight leading-none">{renderBankName(card.bank)}</span>
+        <span className="text-[13px] font-semibold mt-1">{card.type==="Credit"?"Crédito":"Débito"}</span>
       </div>
 
       {/* BOTTOM ROW: NFC + number/label left, logo right */}
@@ -252,10 +204,11 @@ const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:
           <Wifi className={`w-6 h-6 rotate-90 opacity-70 ${isWhite?"text-gray-500":"text-white"}`}/>
           <div className="flex flex-col gap-[2px]">
             <span className={`text-[9px] font-semibold uppercase tracking-wider ${isWhite?"text-gray-400":"text-white/50"}`}>
-              VALID THRU
+              VÁLIDA HASTA
             </span>
-            <span className={`text-[15px] font-medium tracking-[0.1em] ${isWhite?"text-gray-700":"text-white"}`}>
-              •••• {card.last4}
+            <span className={`flex items-baseline gap-1.5 tracking-[0.15em] ${isWhite?"text-gray-700":"text-white"}`}>
+              <span className="text-[13px] font-medium opacity-80">••••</span>
+              <span className="text-[19px] font-bold">{card.last4}</span>
             </span>
           </div>
         </div>
@@ -719,8 +672,8 @@ export default function App() {
     listening:false,currency:"£",merchantMap:{},apiLastFetched:"",
     loyaltyName:"IBERIA",loyaltySubtitle:"PLUS",loyaltyColor:"#D7192D",loyaltyFieldLabel:"IBERIA PLUS NUMBER",
     cards:[
-      {id:"bbva-1",bank:"BBVA",last4:"1239",color:"from-[#004481] via-[#00a9e0] to-[#004481]",brand:"visa",cardType:"Debit"},
-      {id:"revolut-1",bank:"Revolut",last4:"0000",color:"from-[#7b4397] via-[#dc2430] to-[#7b4397]",brand:"mastercard",cardType:"Debit"},
+      {id:"bbva-1",bank:"BBVA",last4:"1239",color:"from-[#3AACC0] via-[#2E9DB0] to-[#1F7A8C]",brand:"visa",cardType:"Debit"},
+      {id:"revolut-1",bank:"Revolut",last4:"0000",color:"from-[#6D3FC4] via-[#4B4CD1] to-[#2E5FE8]",brand:"mastercard",cardType:"Debit"},
     ],
   };
 
@@ -888,15 +841,10 @@ export default function App() {
   const getTxs=(card:Card):Transaction[]=>{
     const fid=state.cards[0]?.id;
     if(card.id===fid&&state.apiResult){
-      const parts=state.apiResult.trim().replace(/\s+/g,"").split("");
-      const acro:Transaction[]=parts.map((ch,i)=>{
-        const L=ch.toUpperCase();
-        const e = pickMerchant(L, merchantMap, i);
-        const base=(L.charCodeAt(0)%40)+8;
-        const dec=((i*23)+7)%99;
-        const minsAgo = i * 3 + Math.floor((L.charCodeAt(0) % 5));
-        return {id:`tx-${i}-${L}`,merchant:e.name,location:"Apple Pay",date:relativeDate(minsAgo/60),amount:fmtAmount(base,dec,currency),currency:"",icon:renderIcon(e.icon),iconKey:e.icon};
-      });
+      const acro:Transaction[]=buildAcrosticData(state.apiResult, merchantMap, currency).map(t=>({
+        id:t.id, merchant:t.merchant, location:t.location, date:t.date,
+        amount:t.amount, currency:"", icon:renderIcon(t.icon), iconKey:t.icon,
+      }));
       return [...acro,...card.transactions];
     }
     return card.transactions;
@@ -974,13 +922,12 @@ export default function App() {
               <GlassBtn className="w-10 h-10">
                 <Plus className="w-4 h-4" strokeWidth={2} style={{color:"rgba(0,0,0,0.7)"}}/>
               </GlassBtn>
-              <GlassBtn onClick={onDots} className="h-10 px-4 gap-2 rounded-full">
+              <GlassBtn className="w-10 h-10">
                 <Search className="w-4 h-4" strokeWidth={2} style={{color:"rgba(0,0,0,0.65)"}}/>
-                <div className="flex items-center gap-[3.5px]">
-                  <div className="w-[4.5px] h-[4.5px] rounded-full" style={{backgroundColor:"rgba(0,0,0,0.6)"}}/>
-                  <div className="w-[4.5px] h-[4.5px] rounded-full" style={{backgroundColor:"rgba(0,0,0,0.6)"}}/>
-                  {state.listening&&<div className="w-[4.5px] h-[4.5px] rounded-full" style={{backgroundColor:"#007AFF"}}/>}
-                </div>
+              </GlassBtn>
+              <GlassBtn onClick={onDots} className="w-10 h-10 relative">
+                <MoreHorizontal className="w-4 h-4" strokeWidth={2} style={{color:"rgba(0,0,0,0.65)"}}/>
+                {state.listening&&<div className="absolute top-[7px] right-[7px] w-[6px] h-[6px] rounded-full" style={{backgroundColor:"#007AFF"}}/>}
               </GlassBtn>
             </div>
           </header>

@@ -4,9 +4,13 @@
   "version": "0.0.0",
   "type": "module",
   "scripts": {
-    "dev": "vite",
+    "dev": "node --experimental-transform-types server.ts",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "lint": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "check": "npm run lint && npm run test && npm run build"
   },
   "dependencies": {
     "@tailwindcss/vite": "^4.1.14",
@@ -20,10 +24,15 @@
     "vite": "^6.2.0"
   },
   "devDependencies": {
+    "@types/express": "^5.0.6",
     "@types/node": "^22.14.0",
     "@vercel/node": "^5.8.5",
+    "@vitest/ui": "^4.1.10",
     "autoprefixer": "^10.4.21",
+    "express": "^5.2.1",
+    "jsdom": "^30.0.0",
     "tailwindcss": "^4.1.14",
-    "typescript": "~5.8.2"
+    "typescript": "~5.8.2",
+    "vitest": "^4.1.10"
   }
 }
