@@ -168,7 +168,10 @@ const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:
       className={`relative w-full rounded-[18px] p-5 overflow-hidden bg-gradient-to-br ${card.gradient} ${isWhite?"text-gray-900 border border-gray-200":"text-white"}`}
       style={{
         aspectRatio:"1.58/1", zIndex:index,
-        marginTop: isStacked && index !== 0 ? "-108px" : "0",
+        // Real Wallet shows ~26% of each stacked card peeking out above the
+        // next one; percentage margin-top is relative to width in CSS, which
+        // conveniently is also what the card's own height is derived from.
+        marginTop: isStacked && index !== 0 ? "-47%" : "0",
         boxShadow: isWhite
           ? "0 12px 40px rgba(0,0,0,0.10), 0 4px 16px rgba(0,0,0,0.06), inset 0 1px 0 rgba(255,255,255,0.8)"
           : "0 12px 40px rgba(0,0,0,0.25), 0 4px 16px rgba(0,0,0,0.15)",
@@ -911,13 +914,12 @@ export default function App() {
               <GlassBtn className="w-10 h-10">
                 <Plus className="w-4 h-4" strokeWidth={2} style={{color:"rgba(0,0,0,0.7)"}}/>
               </GlassBtn>
-              <GlassBtn onClick={onDots} className="h-10 px-4 gap-2 rounded-full">
+              <GlassBtn className="w-10 h-10">
                 <Search className="w-4 h-4" strokeWidth={2} style={{color:"rgba(0,0,0,0.65)"}}/>
-                <div className="flex items-center gap-[3.5px]">
-                  <div className="w-[4.5px] h-[4.5px] rounded-full" style={{backgroundColor:"rgba(0,0,0,0.6)"}}/>
-                  <div className="w-[4.5px] h-[4.5px] rounded-full" style={{backgroundColor:"rgba(0,0,0,0.6)"}}/>
-                  {state.listening&&<div className="w-[4.5px] h-[4.5px] rounded-full" style={{backgroundColor:"#007AFF"}}/>}
-                </div>
+              </GlassBtn>
+              <GlassBtn onClick={onDots} className="w-10 h-10 relative">
+                <MoreHorizontal className="w-4 h-4" strokeWidth={2} style={{color:"rgba(0,0,0,0.65)"}}/>
+                {state.listening&&<div className="absolute top-[7px] right-[7px] w-[6px] h-[6px] rounded-full" style={{backgroundColor:"#007AFF"}}/>}
               </GlassBtn>
             </div>
           </header>
