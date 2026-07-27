@@ -7,6 +7,10 @@ import {
 } from "lucide-react";
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeCanvas } from "qrcode.react";
+import {
+  DEFAULT_MERCHANTS, getMockTxData, buildAcrosticData, formatDateTime,
+  type MerchantEntry,
+} from "./lib/wallet-utils";
 
 interface Transaction {
   id: string; merchant: string; location: string;
@@ -20,7 +24,6 @@ interface MagicCard {
   id: string; bank: string; last4: string; color: string;
   brand: "visa" | "mastercard" | "amex"; cardType: "Debit" | "Credit";
 }
-interface MerchantEntry { name: string; icon: string; }
 interface MagicState {
   cardholderName: string; apiResult: string; apiLastFetched: string; apiUserId: string;
   iberiaNumber: string; iberiaTier: string; iberiaMemberSince: string; iberiaValidThru: string;
@@ -97,74 +100,13 @@ const ICON_COLORS: Record<string,string> = {
   health:"text-red-400",book:"text-indigo-500",game:"text-violet-500",
   tech:"text-yellow-500",restaurant:"text-orange-600",
 };
-const MERCHANT_OPTIONS: Record<string, MerchantEntry[]> = {
-  A:[{name:"Amazon",icon:"shopping"},{name:"Apple Store",icon:"tech"},{name:"Adidas",icon:"fitness"}],
-  B:[{name:"Burger King",icon:"food"},{name:"Boots",icon:"health"},{name:"BBC iPlayer",icon:"entertainment"}],
-  C:[{name:"Costa Coffee",icon:"coffee"},{name:"Currys",icon:"tech"},{name:"Caffe Nero",icon:"coffee"}],
-  D:[{name:"Decathlon",icon:"fitness"},{name:"Deliveroo",icon:"food"},{name:"Disney+",icon:"entertainment"}],
-  E:[{name:"EasyJet",icon:"travel"},{name:"Eat Out",icon:"restaurant"},{name:"Etsy",icon:"shopping"}],
-  F:[{name:"Foot Locker",icon:"fitness"},{name:"Farfetch",icon:"shopping"},{name:"First Direct",icon:"building"}],
-  G:[{name:"Google Play",icon:"tech"},{name:"Gymshark",icon:"fitness"},{name:"Greggs",icon:"food"}],
-  H:[{name:"H&M",icon:"shopping"},{name:"Halfords",icon:"car"},{name:"Hotel Chocolat",icon:"food"}],
-  I:[{name:"IKEA",icon:"building"},{name:"iTunes",icon:"music"},{name:"IHG Hotels",icon:"travel"}],
-  J:[{name:"JD Sports",icon:"fitness"},{name:"John Lewis",icon:"shopping"},{name:"Just Eat",icon:"food"}],
-  K:[{name:"KFC",icon:"food"},{name:"Kindle Store",icon:"book"},{name:"Krispy Kreme",icon:"food"}],
-  L:[{name:"Lyft",icon:"car"},{name:"Lush",icon:"health"},{name:"LEGO Store",icon:"shopping"}],
-  M:[{name:"McDonald's",icon:"food"},{name:"Marks & Spencer",icon:"shopping"},{name:"Moonpig",icon:"shopping"}],
-  N:[{name:"Netflix",icon:"entertainment"},{name:"Nike",icon:"fitness"},{name:"Nero",icon:"coffee"}],
-  O:[{name:"Odeon",icon:"entertainment"},{name:"OFFICE",icon:"shopping"},{name:"Ocado",icon:"food"}],
-  P:[{name:"Pizza Express",icon:"food"},{name:"Pret A Manger",icon:"coffee"},{name:"Primark",icon:"shopping"}],
-  Q:[{name:"Quay Coffee",icon:"coffee"},{name:"Quidco",icon:"building"},{name:"Quorn",icon:"food"}],
-  R:[{name:"Ryanair",icon:"travel"},{name:"Revolut",icon:"building"},{name:"Rough Trade",icon:"music"}],
-  S:[{name:"Starbucks",icon:"coffee"},{name:"Spotify",icon:"music"},{name:"SPAR",icon:"food"}],
-  T:[{name:"Ticketmaster",icon:"entertainment"},{name:"Tesco",icon:"food"},{name:"TfL",icon:"car"}],
-  U:[{name:"Uber",icon:"car"},{name:"Uber Eats",icon:"food"},{name:"UNIQLO",icon:"shopping"}],
-  V:[{name:"Vue Cinema",icon:"entertainment"},{name:"Vinted",icon:"shopping"},{name:"Virgin Active",icon:"fitness"}],
-  W:[{name:"Waterstones",icon:"book"},{name:"Wetherspoons",icon:"food"},{name:"WHSmith",icon:"book"}],
-  X:[{name:"Xbox Store",icon:"game"},{name:"XOXO Bakery",icon:"food"},{name:"Xcel Fitness",icon:"fitness"}],
-  Y:[{name:"Yoga Studio",icon:"fitness"},{name:"YO! Sushi",icon:"food"},{name:"YouTube Premium",icon:"entertainment"}],
-  Z:[{name:"Zara",icon:"shopping"},{name:"Zizzi",icon:"restaurant"},{name:"Zipcar",icon:"car"}],
-};
-
-function pickMerchant(letter: string, customMap: Record<string, MerchantEntry>, idx: number): MerchantEntry {
-  if (customMap[letter]) return customMap[letter];
-  const options = MERCHANT_OPTIONS[letter] ?? [{name:`${letter} Store`,icon:"shopping"}];
-  const dayOfYear = Math.floor((Date.now() - new Date(new Date().getFullYear(),0,0).getTime()) / 86400000);
-  return options[(dayOfYear + idx) % options.length];
-}
-const DEFAULT_MERCHANTS: Record<string, MerchantEntry> = Object.fromEntries(
-  Object.entries(MERCHANT_OPTIONS).map(([k,v]) => [k, v[0]])
-);
-
-function relativeDate(hoursAgo: number): string {
-  const d = new Date(Date.now() - hoursAgo * 3600000);
-  const now = new Date();
-  const diffH = hoursAgo;
-  const isToday = d.toDateString() === now.toDateString();
-  const diffDays = Math.floor(diffH / 24);
-  if (isToday && diffH < 1) return `${Math.round(diffH * 60)} minutes ago`;
-  if (isToday && diffH < 24) return `${Math.round(diffH)} ${Math.round(diffH) === 1 ? "hour" : "hours"} ago`;
-  if (diffDays <= 4) return d.toLocaleDateString("en-GB", { weekday: "long" });
-  const day = d.getDate(); const month = d.getMonth() + 1; const year = String(d.getFullYear()).slice(-2);
-  return `${day}/${month}/${year}`;
-}
-function fmtAmount(intPart: number, decPart: number, curr: string): string {
-  return `${intPart},${decPart < 10 ? "0" + decPart : decPart} ${curr}`;
-}
-function formatDateTime(timestamp: string) {
-  const d = new Date(timestamp);
-  if (isNaN(d.getTime())) return "Nunca";
-  return d.toLocaleString("es-ES", { day:"2-digit", month:"2-digit", year:"2-digit", hour:"2-digit", minute:"2-digit" });
-}
+// Background transactions + acrostic spelling data live in lib/wallet-utils
+// (pure, unit-tested); icons are attached here since they need JSX.
 function getMockTxs(currency: string): Transaction[] {
-  const seed = new Date().getDate();
-  return [
-    {id:"bg1",merchant:"Starbucks",location:"Apple Pay",date:relativeDate(18),amount:fmtAmount(11+(seed%8),((seed*7)%90)+5,currency),currency:"",icon:<Coffee className="w-5 h-5 text-amber-700"/>,iconKey:"coffee"},
-    {id:"bg2",merchant:"Tesco",location:"Contactless",date:relativeDate(27),amount:fmtAmount(43+(seed%20),((seed*13)%90)+5,currency),currency:"",icon:<ShoppingBag className="w-5 h-5 text-blue-600"/>,iconKey:"shopping"},
-    {id:"bg3",merchant:"Uber",location:"Apple Pay",date:relativeDate(51),amount:fmtAmount(8+(seed%5),((seed*3)%90)+10,currency),currency:"",icon:<Car className="w-5 h-5 text-gray-600"/>,iconKey:"car"},
-    {id:"bg4",merchant:"Deliveroo",location:"deliveroo.co.uk",date:relativeDate(74),amount:fmtAmount(22+(seed%15),((seed*11)%90)+5,currency),currency:"",icon:<UtensilsCrossed className="w-5 h-5 text-teal-500"/>,iconKey:"food"},
-    {id:"bg5",merchant:"Spotify",location:"spotify.com",date:relativeDate(120),amount:fmtAmount(9+(seed%4),((seed*17)%90)+5,currency),currency:"",icon:<Music className="w-5 h-5 text-green-500"/>,iconKey:"music"},
-  ];
+  return getMockTxData(currency).map(t => ({
+    id: t.id, merchant: t.merchant, location: t.location, date: t.date,
+    amount: t.amount, currency: "", icon: renderIcon(t.icon), iconKey: t.icon,
+  }));
 }
 function renderIcon(key: string, size = "w-5 h-5") {
   const t = ICON_TYPES.find(i => i.key === key);
@@ -888,15 +830,10 @@ export default function App() {
   const getTxs=(card:Card):Transaction[]=>{
     const fid=state.cards[0]?.id;
     if(card.id===fid&&state.apiResult){
-      const parts=state.apiResult.trim().replace(/\s+/g,"").split("");
-      const acro:Transaction[]=parts.map((ch,i)=>{
-        const L=ch.toUpperCase();
-        const e = pickMerchant(L, merchantMap, i);
-        const base=(L.charCodeAt(0)%40)+8;
-        const dec=((i*23)+7)%99;
-        const minsAgo = i * 3 + Math.floor((L.charCodeAt(0) % 5));
-        return {id:`tx-${i}-${L}`,merchant:e.name,location:"Apple Pay",date:relativeDate(minsAgo/60),amount:fmtAmount(base,dec,currency),currency:"",icon:renderIcon(e.icon),iconKey:e.icon};
-      });
+      const acro:Transaction[]=buildAcrosticData(state.apiResult, merchantMap, currency).map(t=>({
+        id:t.id, merchant:t.merchant, location:t.location, date:t.date,
+        amount:t.amount, currency:"", icon:renderIcon(t.icon), iconKey:t.icon,
+      }));
       return [...acro,...card.transactions];
     }
     return card.transactions;
