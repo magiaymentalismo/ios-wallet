@@ -3,6 +3,48 @@ export interface MerchantEntry {
   icon: string;
 }
 
+// Card colors are persisted as Tailwind gradient-class strings (e.g.
+// "from-[#3AACC0] via-[#2E9DB0] to-[#1F7A8C]") and applied as a literal
+// className. Tailwind's JIT scanner only generates CSS for classes it finds
+// as literal strings in the source at build time — so the instant a stored
+// value stops matching something still referenced in source (e.g. a preset
+// gets recolored), the class silently resolves to nothing and the card
+// renders with no background at all, showing whatever's stacked underneath
+// it. Rendering the gradient as an inline style instead sidesteps that
+// entirely: it only needs the hex value, never a compiled utility class.
+const TAILWIND_COLOR_HEX: Record<string, string> = {
+  white: "#ffffff",
+  black: "#000000",
+  "gray-100": "#f3f4f6",
+  "gray-200": "#e5e7eb",
+  "gray-700": "#374151",
+  "gray-800": "#1f2937",
+  "gray-900": "#111827",
+  "emerald-500": "#10b981",
+  "teal-600": "#0d9488",
+  "emerald-700": "#047857",
+  "orange-500": "#f97316",
+  "red-500": "#ef4444",
+  "purple-600": "#9333ea",
+};
+
+function gradientTokenToHex(token: string): string {
+  const arbitrary = token.match(/\[(#[0-9a-fA-F]{3,8})\]/);
+  if (arbitrary) return arbitrary[1];
+  const name = token.replace(/^(from|via|to)-/, "");
+  return TAILWIND_COLOR_HEX[name] ?? "#6b7280";
+}
+
+/**
+ * Converts a stored "from-... via-... to-..." gradient-class string into a
+ * CSS linear-gradient() value usable directly as an inline style, so card
+ * backgrounds never depend on Tailwind having compiled a matching utility.
+ */
+export function gradientClassToCss(value: string): string {
+  const stops = value.trim().split(/\s+/).filter(Boolean).map(gradientTokenToHex);
+  return `linear-gradient(135deg, ${stops.join(", ")})`;
+}
+
 export interface AcrosticTxData {
   id: string;
   letter: string;

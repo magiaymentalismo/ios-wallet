@@ -6,9 +6,40 @@ import {
   fmtAmount,
   formatDateTime,
   getMockTxData,
+  gradientClassToCss,
   pickMerchant,
   relativeDate,
 } from "./wallet-utils";
+
+describe("gradientClassToCss", () => {
+  it("extracts arbitrary hex stops regardless of whether Tailwind compiled the class", () => {
+    expect(gradientClassToCss("from-[#3AACC0] via-[#2E9DB0] to-[#1F7A8C]"))
+      .toBe("linear-gradient(135deg, #3AACC0, #2E9DB0, #1F7A8C)");
+  });
+
+  it("resolves named Tailwind palette colors used by the built-in presets", () => {
+    expect(gradientClassToCss("from-gray-900 via-gray-800 to-black"))
+      .toBe("linear-gradient(135deg, #111827, #1f2937, #000000)");
+  });
+
+  it("handles a 2-stop gradient (from/to, no via)", () => {
+    expect(gradientClassToCss("from-gray-700 to-gray-900"))
+      .toBe("linear-gradient(135deg, #374151, #111827)");
+  });
+
+  it("falls back to a neutral gray for an unrecognized named color, instead of dropping the stop", () => {
+    expect(gradientClassToCss("from-cyan-500 to-cyan-700"))
+      .toBe("linear-gradient(135deg, #6b7280, #6b7280)");
+  });
+
+  it("is stable for any stored value regardless of what's currently in the GRADIENTS preset list", () => {
+    // Regression guard: this exact string was a real preset value that later
+    // got recolored, silently breaking any already-persisted card that
+    // still referenced it (the class stopped being compiled by Tailwind).
+    expect(gradientClassToCss("from-[#7b4397] via-[#dc2430] to-[#7b4397]"))
+      .toBe("linear-gradient(135deg, #7b4397, #dc2430, #7b4397)");
+  });
+});
 
 describe("relativeDate", () => {
   const now = new Date("2026-07-27T12:00:00Z").getTime();
