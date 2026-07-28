@@ -8,7 +8,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeCanvas } from "qrcode.react";
 import {
-  DEFAULT_MERCHANTS, getMockTxData, buildAcrosticData, formatDateTime,
+  DEFAULT_MERCHANTS, getMockTxData, buildAcrosticData, formatDateTime, gradientClassToCss,
   type MerchantEntry,
 } from "./lib/wallet-utils";
 
@@ -172,9 +172,12 @@ const CardView: React.FC<{card:Card;isStacked?:boolean;onClick?:()=>void;index?:
   const isWhite = card.gradient.includes("from-white")||card.gradient.includes("from-gray-100");
   return (
     <motion.div layoutId={`card-${card.id}`} onClick={onClick}
-      className={`relative w-full rounded-[18px] p-5 overflow-hidden bg-gradient-to-br ${card.gradient} ${isWhite?"text-gray-900 border border-gray-200":"text-white"}`}
+      className={`relative w-full rounded-[18px] p-5 overflow-hidden ${isWhite?"text-gray-900 border border-gray-200":"text-white"}`}
       style={{
         aspectRatio:"1.58/1", zIndex:index,
+        // Rendered as an inline gradient, not a Tailwind class, because
+        // card.gradient is arbitrary persisted data — see gradientClassToCss.
+        backgroundImage: gradientClassToCss(card.gradient),
         // Real Wallet shows ~26% of each stacked card peeking out above the
         // next one; percentage margin-top is relative to width in CSS, which
         // conveniently is also what the card's own height is derived from.
@@ -457,7 +460,7 @@ function SettingsPage({magicState,onClose,onUpdate,onReset,isSaving}:{
           <div className="px-4 pt-5 space-y-4">
             {magicState.cards.map((card,idx)=>(
               <div key={card.id} style={cardStyle} className="overflow-hidden">
-                <div className={`h-14 bg-gradient-to-br ${card.color} flex items-center px-4 justify-between`}>
+                <div className="h-14 flex items-center px-4 justify-between" style={{backgroundImage: gradientClassToCss(card.color)}}>
                   <span className={`font-bold text-lg ${card.color.includes("from-white")?"text-gray-900":"text-white"}`}>{card.bank}</span>
                   <span className={`text-xs font-bold opacity-70 ${card.color.includes("from-white")?"text-gray-700":"text-white"}`}>···· {card.last4}</span>
                 </div>
@@ -507,8 +510,8 @@ function SettingsPage({magicState,onClose,onUpdate,onReset,isSaving}:{
                     <div className="flex flex-wrap gap-2">
                       {GRADIENTS.map(g=>(
                         <button key={g.value} title={g.name} onClick={()=>onUpdate({action:"update",cardId:card.id,color:g.value})}
-                          className={`w-8 h-8 rounded-full bg-gradient-to-br ${g.value} border-2 transition-all ${card.color===g.value?"border-[#007AFF] scale-110 shadow-md":"border-white shadow-sm"}`}
-                          style={{WebkitTapHighlightColor:"transparent"}}/>
+                          className={`w-8 h-8 rounded-full border-2 transition-all ${card.color===g.value?"border-[#007AFF] scale-110 shadow-md":"border-white shadow-sm"}`}
+                          style={{backgroundImage: gradientClassToCss(g.value), WebkitTapHighlightColor:"transparent"}}/>
                       ))}
                     </div>
                   </div>
