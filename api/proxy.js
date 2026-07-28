@@ -1,13 +1,18 @@
 // Server-side proxy for the GOO! (11q.co) lookup API.
 //
-// The frontend can't call 11q.co directly from every network — some venues'
-// wifi/carrier NAT gets blocked by 11q.co's abuse protection — so this route
-// fetches on the server with browser-like headers and forwards the response.
-// Restores the endpoint that api/proxy.ts used to serve before it was
-// accidentally dropped when the API was converted from TS to plain JS.
-export default async function handler(req, res) {
-  const { userId } = req.query;
-  if (!userId) return res.status(400).json({ error: "missing userId" });
+// Runs on Vercel's Edge runtime rather than Node serverless: Cloudflare
+// (which fronts 11q.co) challenges/blocks Vercel's Node serverless IP
+// ranges with a 403, but the Edge runtime egresses through a different
+// pool that may not be flagged. If this doesn't hold up, the fallback is
+// a relay hosted outside Vercel entirely.
+export const config = { runtime: "edge" };
+
+export default async function handler(req) {
+  const url = new URL(req.url);
+  const userId = url.searchParams.get("userId");
+  if (!userId) {
+    return Response.json({ error: "missing userId" }, { status: 400 });
+  }
 
   try {
     const r = await fetch(`https://11q.co/pro-api/${userId}/last-bd`, {
@@ -19,10 +24,11 @@ export default async function handler(req, res) {
       },
     });
     const text = await r.text();
-    res.setHeader("Access-Control-Allow-Origin", "*");
-    res.setHeader("Content-Type", "application/json");
-    return res.status(r.status).send(text);
+    return new Response(text, {
+      status: r.status,
+      headers: { "Access-Control-Allow-Origin": "*", "Content-Type": "application/json" },
+    });
   } catch (e) {
-    return res.status(500).json({ error: String(e) });
+    return Response.json({ error: String(e) }, { status: 500 });
   }
 }
