@@ -10,16 +10,22 @@ import magicHandler from "./api/magic.js";
 import magicResetHandler from "./api/magic/reset.js";
 import webhookHandler from "./api/webhook.js";
 import proxyHandler from "./api/proxy.js";
+import thumpHandler from "./api/thump.js";
 import debugHandler from "./api/debug.js";
 
-// api/proxy.js runs on Vercel's Edge runtime (Web API Request/Response),
-// unlike the other handlers here which use the classic Node (req, res)
-// signature. Adapt Express's request into a Request so it still works
-// against the exact same handler locally.
+// api/proxy.js and api/thump.js run on Vercel's Edge runtime (Web API
+// Request/Response), unlike the other handlers here which use the classic
+// Node (req, res) signature. Adapt Express's request into a Request so
+// they still work against the exact same handler locally.
 function mountEdgeHandler(app: express.Express, route: string, handler: (req: Request) => Promise<Response>) {
   app.all(route, async (req, res) => {
     const url = new URL(req.originalUrl, `http://${req.headers.host}`);
-    const webRequest = new Request(url, { method: req.method, headers: req.headers as HeadersInit });
+    const hasBody = !["GET", "HEAD"].includes(req.method) && req.body && Object.keys(req.body).length > 0;
+    const webRequest = new Request(url, {
+      method: req.method,
+      headers: req.headers as HeadersInit,
+      body: hasBody ? JSON.stringify(req.body) : undefined,
+    });
     const webResponse = await handler(webRequest);
     res.status(webResponse.status);
     webResponse.headers.forEach((value, key) => res.setHeader(key, value));
@@ -37,6 +43,7 @@ async function startServer() {
   app.all("/api/magic/reset", magicResetHandler);
   app.all("/api/webhook", webhookHandler);
   mountEdgeHandler(app, "/api/proxy", proxyHandler);
+  mountEdgeHandler(app, "/api/thump", thumpHandler);
   app.all("/api/debug", debugHandler);
 
   const vite = await createViteServer({
