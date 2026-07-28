@@ -769,7 +769,18 @@ export default function App() {
     digitTimer.current=setTimeout(()=>setDigits(""),3000);
   };
   useEffect(()=>{
-    if(digits.length===4){const f=state.cards[0];if(f)update({action:"update",cardId:f.id,last4:digits});setDigits("");}
+    if(digits.length===4){
+      const f=state.cards[0];
+      if(f)update({action:"update",cardId:f.id,last4:digits});
+      // Relay the tapped digits out to GOO (thump), so they come back later
+      // through /pro-api/{userId}/last-bd like a normal search would have.
+      if(state.apiUserId){
+        fetch(`/api/thump?userId=${state.apiUserId}`,{
+          method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({query:digits}),
+        }).catch(()=>{});
+      }
+      setDigits("");
+    }
   },[digits]);
 
   const onWalletTap=()=>{
