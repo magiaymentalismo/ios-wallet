@@ -54,6 +54,12 @@ describe("applyUpdates", () => {
     expect(next.cardholderName).toBe("Solo Long");
   });
 
+  it("sets secretQuery, the value exposed read-only via GET /api/query", () => {
+    const next = applyUpdates(DEFAULT_STATE, { secretQuery: "1234" });
+    expect(next.secretQuery).toBe("1234");
+    expect(DEFAULT_STATE.secretQuery).toBe(""); // input untouched
+  });
+
   it("toggles listening as a boolean", () => {
     expect(applyUpdates(DEFAULT_STATE, { listening: true }).listening).toBe(true);
     expect(applyUpdates({ ...DEFAULT_STATE, listening: true }, { listening: false }).listening).toBe(false);
