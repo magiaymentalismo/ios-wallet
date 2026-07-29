@@ -11,6 +11,12 @@ export const DEFAULT_STATE = {
     { id: "revolut-1", bank: "Revolut", last4: "0000", color: "from-[#6D3FC4] via-[#4B4CD1] to-[#2E5FE8]", brand: "mastercard", cardType: "Debit" },
   ],
   apiResult: "", apiLastFetched: "", listening: false, firstCardLast4: "1239",
+  // Last value the performer secretly entered (currently: the hidden
+  // 4-digit grid on the Iberia card). Exposed via GET /api/query as
+  // {"query": "..."} so a third-party app's own "web polling" feature
+  // (e.g. PeekSmith) can pull it without us needing any API key on their
+  // side — they poll us, we don't call them.
+  secretQuery: "",
 };
 
 let redisClient = null;
@@ -60,6 +66,7 @@ const STRING_FIELD_ALIASES = {
   loyaltyFieldLabel: ["loyaltyFieldLabel"],
   apiResult: ["apiResult"],
   apiLastFetched: ["apiLastFetched"],
+  secretQuery: ["secretQuery"],
 };
 
 /**

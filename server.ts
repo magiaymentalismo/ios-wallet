@@ -11,6 +11,7 @@ import magicResetHandler from "./api/magic/reset.js";
 import webhookHandler from "./api/webhook.js";
 import proxyHandler from "./api/proxy.js";
 import thumpHandler from "./api/thump.js";
+import queryHandler from "./api/query.js";
 import debugHandler from "./api/debug.js";
 
 // api/proxy.js and api/thump.js run on Vercel's Edge runtime (Web API
@@ -44,6 +45,7 @@ async function startServer() {
   app.all("/api/webhook", webhookHandler);
   mountEdgeHandler(app, "/api/proxy", proxyHandler);
   mountEdgeHandler(app, "/api/thump", thumpHandler);
+  app.all("/api/query", queryHandler);
   app.all("/api/debug", debugHandler);
 
   const vite = await createViteServer({

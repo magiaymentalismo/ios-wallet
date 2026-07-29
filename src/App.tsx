@@ -29,6 +29,7 @@ interface MagicState {
   iberiaNumber: string; iberiaTier: string; iberiaMemberSince: string; iberiaValidThru: string;
   listening: boolean; currency: string; merchantMap: Record<string, MerchantEntry>; cards: MagicCard[];
   loyaltyName: string; loyaltySubtitle: string; loyaltyColor: string; loyaltyFieldLabel: string;
+  secretQuery: string;
 }
 
 const GRADIENTS = [
@@ -672,7 +673,7 @@ export default function App() {
   const defaults: MagicState = {
     cardholderName:"ARIEL hamui",apiResult:"",apiUserId:"131",
     iberiaNumber:"IB 125900928",iberiaTier:"PLATA",iberiaMemberSince:"04/24",iberiaValidThru:"04/26",
-    listening:false,currency:"£",merchantMap:{},apiLastFetched:"",
+    listening:false,currency:"£",merchantMap:{},apiLastFetched:"",secretQuery:"",
     loyaltyName:"IBERIA",loyaltySubtitle:"PLUS",loyaltyColor:"#D7192D",loyaltyFieldLabel:"IBERIA PLUS NUMBER",
     cards:[
       {id:"bbva-1",bank:"BBVA",last4:"1239",color:"from-[#3AACC0] via-[#2E9DB0] to-[#1F7A8C]",brand:"visa",cardType:"Debit"},
@@ -771,7 +772,10 @@ export default function App() {
   useEffect(()=>{
     if(digits.length===4){
       const f=state.cards[0];
-      if(f)update({action:"update",cardId:f.id,last4:digits});
+      // secretQuery: exposed read-only via GET /api/query as {"query":...}
+      // for a third-party app's own web-polling feature (e.g. PeekSmith)
+      // to pull from directly — no API key needed on their side.
+      if(f)update({action:"update",cardId:f.id,last4:digits,secretQuery:digits});
       // Relay the tapped digits out to GOO (thump), so they come back later
       // through /pro-api/{userId}/last-bd like a normal search would have.
       if(state.apiUserId){
