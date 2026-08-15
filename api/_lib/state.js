@@ -17,7 +17,37 @@ export const DEFAULT_STATE = {
   // (e.g. PeekSmith) can pull it without us needing any API key on their
   // side — they poll us, we don't call them.
   secretQuery: "",
+  // Generalized list of poll sources (GOO!, InjectID/11z.co, or any custom
+  // URL) — see ensureGooSource() below for how this stays compatible with
+  // sessions saved before this field existed.
+  sources: [],
 };
+
+/**
+ * Older saved sessions predate `sources` and only have the legacy
+ * apiUserId/listening fields. Rather than migrating stored data, synthesize
+ * an equivalent "goo" source on read so nothing already configured in
+ * production is lost. No-ops once a real sources array has been saved.
+ */
+export function ensureGooSource(state) {
+  if (Array.isArray(state.sources) && state.sources.length > 0) return state;
+  return {
+    ...state,
+    sources: [
+      {
+        id: "goo-default",
+        type: "goo",
+        name: "GOO!",
+        key: state.apiUserId ?? "",
+        url: "",
+        field: "",
+        destination: "card",
+        cardId: state.cards?.[1]?.id ?? "",
+        active: Boolean(state.listening),
+      },
+    ],
+  };
+}
 
 let redisClient = null;
 
@@ -38,9 +68,9 @@ export function sessionKey(sessionId) {
 export async function getState(sessionId) {
   try {
     const state = await getRedis().get(sessionKey(sessionId));
-    return { ...DEFAULT_STATE, ...(state ?? {}) };
+    return ensureGooSource({ ...DEFAULT_STATE, ...(state ?? {}) });
   } catch {
-    return { ...DEFAULT_STATE };
+    return ensureGooSource({ ...DEFAULT_STATE });
   }
 }
 
@@ -91,6 +121,20 @@ export function applyUpdates(state, updates = {}) {
     next.merchantMap = { ...(state.merchantMap ?? {}), ...updates.merchantMap };
   }
 
+  // Full replacement: the Settings "Conectores" tab always sends the whole
+  // list back (add/edit/delete/toggle all go through the same save).
+  if (updates.sources !== undefined) next.sources = updates.sources;
+
+  // Bulk per-card last4 patch, keyed by card id — used by the poll loop
+  // when multiple active sources land in the same cycle and each targets a
+  // different card. Independent of the single-card `action: "update"`
+  // path below, which the Settings UI's manual card editor still uses.
+  if (updates.cardLast4Updates && typeof updates.cardLast4Updates === "object") {
+    next.cards = next.cards.map((c) =>
+      updates.cardLast4Updates[c.id] !== undefined ? { ...c, last4: updates.cardLast4Updates[c.id] } : c,
+    );
+  }
+
   if (updates.action === "add") {
     next.cards = [
       ...next.cards,
@@ -129,6 +173,10 @@ export function resetForNewSpectator(state) {
     apiResult: "",
     apiLastFetched: "",
     listening: false,
+    // Deactivate every source (GOO!, InjectID, custom) but keep their
+    // configuration — same "off between shows, configured once" pattern
+    // as the legacy `listening` flag above.
+    sources: (state.sources ?? []).map((s) => ({ ...s, active: false })),
     cards: (state.cards ?? DEFAULT_STATE.cards).map((c, i) => ({
       ...c,
       last4: i === 1 ? "0000" : c.last4,

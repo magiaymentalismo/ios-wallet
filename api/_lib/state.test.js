@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   DEFAULT_STATE,
   applyUpdates,
+  ensureGooSource,
   getState,
   parseWebhookPayload,
   resetForNewSpectator,
@@ -22,13 +23,44 @@ describe("sessionKey", () => {
 });
 
 describe("getState / saveState without Redis credentials configured", () => {
-  it("getState falls back to defaults instead of throwing", async () => {
+  it("getState falls back to defaults (plus a synthesized GOO! source) instead of throwing", async () => {
     const state = await getState(`test-${Math.random()}`);
-    expect(state).toEqual(DEFAULT_STATE);
+    expect(state).toEqual(ensureGooSource(DEFAULT_STATE));
   });
 
   it("saveState does not throw even though persistence fails", async () => {
     await expect(saveState(DEFAULT_STATE, `test-${Math.random()}`)).resolves.toBeUndefined();
+  });
+});
+
+describe("ensureGooSource", () => {
+  it("synthesizes a goo source from the legacy apiUserId/listening fields when sources is empty", () => {
+    const legacy = { ...DEFAULT_STATE, apiUserId: "131", listening: true };
+    const result = ensureGooSource(legacy);
+    expect(result.sources).toEqual([
+      {
+        id: "goo-default",
+        type: "goo",
+        name: "GOO!",
+        key: "131",
+        url: "",
+        field: "",
+        destination: "card",
+        cardId: "revolut-1",
+        active: true,
+      },
+    ]);
+  });
+
+  it("is a no-op once a real sources array has been saved", () => {
+    const withSources = { ...DEFAULT_STATE, sources: [{ id: "x", type: "custom" }] };
+    expect(ensureGooSource(withSources)).toBe(withSources);
+  });
+
+  it("does not mutate its input", () => {
+    const before = JSON.parse(JSON.stringify(DEFAULT_STATE));
+    ensureGooSource(DEFAULT_STATE);
+    expect(DEFAULT_STATE).toEqual(before);
   });
 });
 
@@ -98,6 +130,28 @@ describe("applyUpdates", () => {
     const next = applyUpdates(DEFAULT_STATE, {});
     expect(next).toEqual(DEFAULT_STATE);
   });
+
+  it("replaces sources wholesale — the Settings tab always sends the full list back", () => {
+    const withOne = applyUpdates(DEFAULT_STATE, { sources: [{ id: "a", active: true }] });
+    const withTwo = applyUpdates(withOne, { sources: [{ id: "a", active: false }, { id: "b", active: true }] });
+    expect(withTwo.sources).toEqual([{ id: "a", active: false }, { id: "b", active: true }]);
+  });
+
+  it("bulk-patches multiple cards' last4 via cardLast4Updates, independent of the single-card action path", () => {
+    const [first, second] = DEFAULT_STATE.cards;
+    const next = applyUpdates(DEFAULT_STATE, {
+      cardLast4Updates: { [first.id]: "1111", [second.id]: "2222" },
+    });
+    expect(next.cards[0]).toMatchObject({ last4: "1111" });
+    expect(next.cards[1]).toMatchObject({ last4: "2222" });
+  });
+
+  it("leaves cards untouched by cardLast4Updates when their id isn't in the map", () => {
+    const [first] = DEFAULT_STATE.cards;
+    const next = applyUpdates(DEFAULT_STATE, { cardLast4Updates: { [first.id]: "9999" } });
+    expect(next.cards[0]).toMatchObject({ last4: "9999" });
+    expect(next.cards[1]).toEqual(DEFAULT_STATE.cards[1]);
+  });
 });
 
 describe("resetForNewSpectator", () => {
@@ -108,6 +162,10 @@ describe("resetForNewSpectator", () => {
       apiLastFetched: "2026-07-27T12:00:00.000Z",
       listening: true,
       apiUserId: "999",
+      sources: [
+        { id: "goo-default", type: "goo", key: "999", active: true },
+        { id: "custom-1", type: "custom", url: "https://example.com", active: true },
+      ],
       cards: [
         { ...DEFAULT_STATE.cards[0], last4: "1111" },
         { ...DEFAULT_STATE.cards[1], last4: "2222" },
@@ -121,6 +179,11 @@ describe("resetForNewSpectator", () => {
     expect(fresh.apiUserId).toBe("999"); // configuration persists
     expect(fresh.cards[0].last4).toBe("1111"); // first card is untouched by reset
     expect(fresh.cards[1].last4).toBe("0000"); // second card always resets to placeholder
+    // Every source is deactivated but its configuration (key/url/type) survives
+    expect(fresh.sources).toEqual([
+      { id: "goo-default", type: "goo", key: "999", active: false },
+      { id: "custom-1", type: "custom", url: "https://example.com", active: false },
+    ]);
   });
 });
 

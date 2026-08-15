@@ -224,3 +224,91 @@ export function computeGooPatch(
     ...(bdChanged ? { last4: bdLast4 } : {}),
   };
 }
+
+// ─── Generalized poll sources (Conectores) ─────────────────────────────────
+// GOO! is one preset among several — see api/_lib/state.js's ensureGooSource
+// for how a legacy GOO!-only session becomes a "goo" source on first read.
+
+export type SourceType = "goo" | "injectid" | "custom";
+export type SourceDestination = "acrostic" | "card";
+
+export interface Source {
+  id: string;
+  type: SourceType;
+  name: string;
+  key: string; // the id/token substituted into a preset's known URL template
+  url: string; // full URL, only used when type === "custom"
+  field: string; // JSON field to read; presets know their own field, custom sources set this
+  destination: SourceDestination;
+  cardId: string; // required when destination === "card"
+  active: boolean;
+}
+
+/** Builds the URL to poll for a given source. GOO!'s birthday lookup and
+ * InjectID/11z.co's selection endpoint both follow a "just fill in your ID"
+ * template; custom sources supply their own URL outright. */
+export function resolveSourceUrl(source: Pick<Source, "type" | "key" | "url">): string {
+  switch (source.type) {
+    case "goo":
+      return `https://11q.co/pro-api/${source.key}/last-bd`;
+    case "injectid":
+      return `https://11z.co/_w/${source.key}/selection`;
+    case "custom":
+      return source.url;
+  }
+}
+
+export interface SourcePatchContext {
+  apiResult: string;
+  cardLast4ById: Record<string, string>;
+}
+
+export interface SourcePatch {
+  apiResult?: string;
+  apiLastFetched?: string;
+  cardId?: string;
+  last4?: string;
+}
+
+/**
+ * Per-source counterpart to computeGooPatch, generalized to any source.
+ * GOO! keeps its special dual-field behavior (a single poll can carry both
+ * a new query *and* a birthday, going to two different places at once) by
+ * delegating to computeGooPatch itself. InjectID and custom sources are
+ * simpler: one field, one destination (either the acrostic/apiResult, or a
+ * specific card's last4), patched only when the value actually changed.
+ */
+export function computeSourcePatch(
+  source: Source,
+  response: Record<string, unknown>,
+  current: SourcePatchContext,
+  now: number = Date.now(),
+): SourcePatch | null {
+  if (source.type === "goo") {
+    const gooPatch = computeGooPatch(
+      { apiResult: current.apiResult, secondCardLast4: current.cardLast4ById[source.cardId] ?? "" },
+      response as GooPollResult,
+      now,
+    );
+    if (!gooPatch) return null;
+    return {
+      ...(gooPatch.apiResult !== undefined
+        ? { apiResult: gooPatch.apiResult, apiLastFetched: gooPatch.apiLastFetched }
+        : {}),
+      ...(gooPatch.last4 !== undefined ? { cardId: source.cardId, last4: gooPatch.last4 } : {}),
+    };
+  }
+
+  const fieldName = source.type === "injectid" ? "value" : source.field;
+  const raw = response?.[fieldName];
+  const value = raw === undefined || raw === null ? "" : String(raw).trim();
+  if (!value) return null;
+
+  if (source.destination === "acrostic") {
+    if (value === current.apiResult) return null;
+    return { apiResult: value, apiLastFetched: new Date(now).toISOString() };
+  }
+
+  if (value === (current.cardLast4ById[source.cardId] ?? "")) return null;
+  return { cardId: source.cardId, last4: value };
+}

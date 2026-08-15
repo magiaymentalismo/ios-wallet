@@ -1,12 +1,12 @@
 // Sends a value to GOO! (11q.co)'s "thump" endpoint, which stores it as
 // that Goo ID's last search query — the write-side counterpart to
-// api/proxy.js. Used to relay data captured on the performer's own device
-// (e.g. the 4 digits tapped on the hidden loyalty-card grid) out to GOO,
-// so it comes back later through /pro-api/{goo_id}/last-bd like a normal
-// search would have.
+// api/source-proxy.js. Used to relay data captured on the performer's own
+// device (e.g. the 4 digits tapped on the hidden loyalty-card grid) out to
+// GOO, so it comes back later through /pro-api/{goo_id}/last-bd like a
+// normal search would have.
 //
-// Same Cloudflare situation as api/proxy.js: 11q.co doesn't send CORS
-// headers (browser calls fail) and Vercel's Node serverless IPs get a
+// Same Cloudflare situation as api/source-proxy.js: 11q.co doesn't send
+// CORS headers (browser calls fail) and Vercel's Node serverless IPs get a
 // Cloudflare challenge/403, so this runs on the Edge runtime.
 export const config = { runtime: "edge" };
 

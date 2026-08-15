@@ -4,12 +4,15 @@ import {
   MERCHANT_OPTIONS,
   buildAcrosticData,
   computeGooPatch,
+  computeSourcePatch,
   fmtAmount,
   formatDateTime,
   getMockTxData,
   gradientClassToCss,
   pickMerchant,
   relativeDate,
+  resolveSourceUrl,
+  type Source,
 } from "./wallet-utils";
 
 describe("computeGooPatch", () => {
@@ -199,5 +202,71 @@ describe("buildAcrosticData", () => {
   it("gives every transaction a unique id even with repeated letters", () => {
     const txs = buildAcrosticData("HELLO", {}, "£", now);
     expect(new Set(txs.map((t) => t.id)).size).toBe(txs.length);
+  });
+});
+
+describe("resolveSourceUrl", () => {
+  it("builds the GOO! last-bd URL from the key", () => {
+    expect(resolveSourceUrl({ type: "goo", key: "131", url: "" })).toBe("https://11q.co/pro-api/131/last-bd");
+  });
+
+  it("builds the InjectID/11z.co selection URL from the key", () => {
+    expect(resolveSourceUrl({ type: "injectid", key: "8869", url: "" })).toBe("https://11z.co/_w/8869/selection");
+  });
+
+  it("passes a custom source's URL through unchanged", () => {
+    expect(resolveSourceUrl({ type: "custom", key: "", url: "https://example.com/api/last" }))
+      .toBe("https://example.com/api/last");
+  });
+});
+
+describe("computeSourcePatch", () => {
+  const now = new Date("2026-07-27T12:00:00Z").getTime();
+
+  const gooSource: Source = {
+    id: "goo-default", type: "goo", name: "GOO!", key: "131", url: "", field: "",
+    destination: "card", cardId: "revolut-1", active: true,
+  };
+  const injectSource: Source = {
+    id: "inject-1", type: "injectid", name: "InjectID", key: "8869", url: "", field: "",
+    destination: "acrostic", cardId: "", active: true,
+  };
+  const customCardSource: Source = {
+    id: "custom-1", type: "custom", name: "My Source", key: "", url: "https://example.com/api",
+    field: "text", destination: "card", cardId: "bbva-1", active: true,
+  };
+
+  it("delegates to computeGooPatch for type: goo, targeting the source's own cardId", () => {
+    const current = { apiResult: "", cardLast4ById: { "revolut-1": "0000" } };
+    const patch = computeSourcePatch(gooSource, { query: "lionel messi", bd: "24/06/1987" }, current, now);
+    expect(patch).toEqual({
+      apiResult: "lionel messi",
+      apiLastFetched: new Date(now).toISOString(),
+      cardId: "revolut-1",
+      last4: "2406",
+    });
+  });
+
+  it("reads the 'value' field for an injectid source and routes it to its configured destination", () => {
+    const current = { apiResult: "", cardLast4ById: {} };
+    const patch = computeSourcePatch(injectSource, { value: "banana" }, current, now);
+    expect(patch).toEqual({ apiResult: "banana", apiLastFetched: new Date(now).toISOString() });
+  });
+
+  it("reads a custom field name for a custom source and patches the configured card", () => {
+    const current = { apiResult: "", cardLast4ById: { "bbva-1": "0000" } };
+    const patch = computeSourcePatch(customCardSource, { text: "hello" }, current, now);
+    expect(patch).toEqual({ cardId: "bbva-1", last4: "hello" });
+  });
+
+  it("returns null when the value hasn't changed", () => {
+    const current = { apiResult: "banana", cardLast4ById: {} };
+    expect(computeSourcePatch(injectSource, { value: "banana" }, current, now)).toBeNull();
+  });
+
+  it("returns null when the configured field is missing or empty from the response", () => {
+    const current = { apiResult: "", cardLast4ById: {} };
+    expect(computeSourcePatch(injectSource, {}, current, now)).toBeNull();
+    expect(computeSourcePatch(injectSource, { value: "" }, current, now)).toBeNull();
   });
 });
