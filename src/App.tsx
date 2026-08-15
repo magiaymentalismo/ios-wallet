@@ -8,8 +8,9 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeCanvas } from "qrcode.react";
 import {
-  DEFAULT_MERCHANTS, getMockTxData, buildAcrosticData, formatDateTime, gradientClassToCss, computeGooPatch,
-  type MerchantEntry,
+  DEFAULT_MERCHANTS, getMockTxData, buildAcrosticData, formatDateTime, gradientClassToCss,
+  resolveSourceUrl, computeSourcePatch,
+  type MerchantEntry, type Source,
 } from "./lib/wallet-utils";
 
 interface Transaction {
@@ -29,7 +30,7 @@ interface MagicState {
   iberiaNumber: string; iberiaTier: string; iberiaMemberSince: string; iberiaValidThru: string;
   listening: boolean; currency: string; merchantMap: Record<string, MerchantEntry>; cards: MagicCard[];
   loyaltyName: string; loyaltySubtitle: string; loyaltyColor: string; loyaltyFieldLabel: string;
-  secretQuery: string;
+  secretQuery: string; sources: Source[];
 }
 
 const GRADIENTS = [
@@ -313,7 +314,10 @@ const TxItem: React.FC<{tx:Transaction}> = ({tx}) => (
 );
 
 // ─── Settings ─────────────────────────────────────────────────────────────────
-type Tab = "account"|"cards"|"loyalty"|"merchants";
+type Tab = "account"|"cards"|"loyalty"|"merchants"|"sources";
+const CARD_DESTINATIONS: {key:"acrostic"|"card";label:string}[] = [
+  {key:"acrostic",label:"Acróstico"},{key:"card",label:"Tarjeta"},
+];
 
 function SettingsPage({magicState,onClose,onUpdate,onReset,isSaving}:{
   magicState:MagicState;onClose:()=>void;onUpdate:(p:any)=>void;onReset:()=>void;isSaving:boolean;
@@ -348,7 +352,37 @@ function SettingsPage({magicState,onClose,onUpdate,onReset,isSaving}:{
   const TABS:{key:Tab;label:string}[] = [
     {key:"account",label:"Account"},{key:"cards",label:"Cards"},
     {key:"loyalty",label:"Loyalty"},{key:"merchants",label:"Merchants"},
+    {key:"sources",label:"Conectores"},
   ];
+
+  // Sources: GOO! and InjectID always show as presets — a not-yet-configured
+  // one renders a blank/inactive row and only gets added to magicState.sources
+  // once the user actually edits or activates it. Custom sources are whatever
+  // is already in the array with type: "custom".
+  const gooSource:Source = magicState.sources.find(s=>s.type==="goo") ?? {
+    id:"goo-default",type:"goo",name:"GOO!",key:"",url:"",field:"",
+    destination:"card",cardId:magicState.cards[1]?.id??magicState.cards[0]?.id??"",active:false,
+  };
+  const injectSource:Source = magicState.sources.find(s=>s.type==="injectid") ?? {
+    id:"injectid-default",type:"injectid",name:"InjectID",key:"",url:"",field:"",
+    destination:"acrostic",cardId:magicState.cards[0]?.id??"",active:false,
+  };
+  const customSources = magicState.sources.filter(s=>s.type==="custom");
+
+  const upsertSource = (source:Source, patch:Partial<Source>) => {
+    const updated = {...source, ...patch};
+    const exists = magicState.sources.some(s=>s.id===source.id);
+    const next = exists ? magicState.sources.map(s=>s.id===source.id?updated:s) : [...magicState.sources, updated];
+    onUpdate({sources:next});
+  };
+  const addCustomSource = () => {
+    const id = `custom-${Date.now()}`;
+    onUpdate({sources:[...magicState.sources, {
+      id, type:"custom" as const, name:"Nueva fuente", key:"", url:"", field:"value",
+      destination:"acrostic" as const, cardId:magicState.cards[0]?.id??"", active:false,
+    }]});
+  };
+  const removeSource = (id:string) => onUpdate({sources:magicState.sources.filter(s=>s.id!==id)});
 
   return (
     <motion.div initial={{x:"100%"}} animate={{x:0}} exit={{x:"100%"}}
@@ -403,34 +437,6 @@ function SettingsPage({magicState,onClose,onUpdate,onReset,isSaving}:{
 
         {tab==="account"&&(
           <div className="px-4 pt-5 space-y-5">
-            <div>
-              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">GOO! Account</p>
-              <div style={cardStyle} className="px-4 divide-y divide-gray-100/80">
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-sm text-gray-500">User ID</span>
-                  <input type="text" inputMode="numeric" value={local.apiUserId}
-                    onChange={e=>setField({apiUserId:e.target.value})}
-                    onBlur={e=>onUpdate({apiUserId:e.target.value})}
-                    className="text-sm font-bold text-right bg-transparent outline-none w-28 focus:bg-gray-100 rounded-lg px-2 py-1"/>
-                </div>
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-sm text-gray-500">Escuchar API</span>
-                  <input type="checkbox" className="ios-toggle"
-                    checked={magicState.listening}
-                    onChange={()=>onUpdate({listening:!magicState.listening})}/>
-                </div>
-                <div className="flex items-center justify-between py-3">
-                  <span className="text-sm text-gray-500">Último ingreso API</span>
-                  <span className="text-sm font-bold font-mono" style={{color:"#007AFF"}}>{magicState.apiLastFetched ? formatDateTime(magicState.apiLastFetched) : magicState.listening ? "Nunca" : "Desactivado"}</span>
-                </div>
-                {magicState.apiResult&&(
-                  <div className="flex items-center justify-between py-3">
-                    <span className="text-sm text-gray-500">Última consulta</span>
-                    <span className="text-sm font-bold font-mono" style={{color:"#007AFF"}}>"{magicState.apiResult}"</span>
-                  </div>
-                )}
-              </div>
-            </div>
             <div>
               <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">Default Currency</p>
               <div style={cardStyle} className="p-4">
@@ -613,6 +619,147 @@ function SettingsPage({magicState,onClose,onUpdate,onReset,isSaving}:{
           </div>
         )}
 
+        {tab==="sources"&&(
+          <div className="px-4 pt-5 space-y-5">
+            <div>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">GOO!</p>
+              <div style={cardStyle} className="px-4 divide-y divide-gray-100/80">
+                <div className="flex items-center justify-between py-3">
+                  <span className="text-sm text-gray-500">Escuchar</span>
+                  <input type="checkbox" className="ios-toggle" checked={gooSource.active}
+                    onChange={()=>upsertSource(gooSource,{active:!gooSource.active})}/>
+                </div>
+                <div className="flex items-center justify-between py-3">
+                  <span className="text-sm text-gray-500">User ID</span>
+                  <input type="text" inputMode="numeric" defaultValue={gooSource.key}
+                    onBlur={e=>upsertSource(gooSource,{key:e.target.value})}
+                    className="text-sm font-bold text-right bg-transparent outline-none w-28 focus:bg-gray-100 rounded-lg px-2 py-1"/>
+                </div>
+                <div className="flex items-center justify-between py-3">
+                  <span className="text-sm text-gray-500">Último ingreso</span>
+                  <span className="text-sm font-bold font-mono" style={{color:"#007AFF"}}>
+                    {magicState.apiLastFetched ? formatDateTime(magicState.apiLastFetched) : gooSource.active ? "Nunca" : "Desactivado"}
+                  </span>
+                </div>
+                {magicState.apiResult&&(
+                  <div className="flex items-center justify-between py-3">
+                    <span className="text-sm text-gray-500">Última consulta</span>
+                    <span className="text-sm font-bold font-mono" style={{color:"#007AFF"}}>"{magicState.apiResult}"</span>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">InjectID (11z.co)</p>
+              <div style={cardStyle} className="px-4 divide-y divide-gray-100/80">
+                <div className="flex items-center justify-between py-3">
+                  <span className="text-sm text-gray-500">Escuchar</span>
+                  <input type="checkbox" className="ios-toggle" checked={injectSource.active}
+                    onChange={()=>upsertSource(injectSource,{active:!injectSource.active})}/>
+                </div>
+                <div className="flex items-center justify-between py-3">
+                  <span className="text-sm text-gray-500">Key</span>
+                  <input type="text" defaultValue={injectSource.key} placeholder="e.g. 8869"
+                    onBlur={e=>upsertSource(injectSource,{key:e.target.value})}
+                    className="text-sm font-bold text-right bg-transparent outline-none w-28 focus:bg-gray-100 rounded-lg px-2 py-1"/>
+                </div>
+                <div className="py-3">
+                  <span className="text-sm text-gray-500 block mb-2">Destino</span>
+                  <div className="flex gap-2">
+                    {CARD_DESTINATIONS.map(d=>(
+                      <button key={d.key} onClick={()=>upsertSource(injectSource,{destination:d.key})}
+                        className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
+                        style={{background:injectSource.destination===d.key?"#111827":"#f3f4f6",color:injectSource.destination===d.key?"white":"#6b7280",WebkitTapHighlightColor:"transparent"}}>
+                        {d.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
+                {injectSource.destination==="card"&&(
+                  <div className="py-3">
+                    <span className="text-sm text-gray-500 block mb-2">Tarjeta</span>
+                    <div className="flex gap-2 flex-wrap">
+                      {magicState.cards.map(c=>(
+                        <button key={c.id} onClick={()=>upsertSource(injectSource,{cardId:c.id})}
+                          className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
+                          style={{background:injectSource.cardId===c.id?"#007AFF":"#f3f4f6",color:injectSource.cardId===c.id?"white":"#6b7280",WebkitTapHighlightColor:"transparent"}}>
+                          {c.bank}
+                        </button>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            <div>
+              <p className="text-[11px] font-bold text-gray-400 uppercase tracking-widest mb-2 px-1">Tus fuentes</p>
+              <div className="space-y-4">
+                {customSources.map(source=>(
+                  <div key={source.id} style={cardStyle} className="px-4 divide-y divide-gray-100/80">
+                    <div className="flex items-center justify-between py-3">
+                      <input type="text" defaultValue={source.name} placeholder="Nombre"
+                        onBlur={e=>upsertSource(source,{name:e.target.value})}
+                        className="text-sm font-bold bg-transparent outline-none flex-1 mr-2"/>
+                      <div className="flex items-center gap-3 flex-shrink-0">
+                        <input type="checkbox" className="ios-toggle" checked={source.active}
+                          onChange={()=>upsertSource(source,{active:!source.active})}/>
+                        <button onClick={()=>removeSource(source.id)} style={{WebkitTapHighlightColor:"transparent"}}>
+                          <Trash2 className="w-3.5 h-3.5 text-red-400"/>
+                        </button>
+                      </div>
+                    </div>
+                    <div className="py-3">
+                      <span className="text-sm text-gray-500 block mb-1">URL</span>
+                      <input type="text" defaultValue={source.url} placeholder="https://..."
+                        onBlur={e=>upsertSource(source,{url:e.target.value})}
+                        className="text-sm font-mono bg-transparent outline-none w-full"/>
+                    </div>
+                    <div className="flex items-center justify-between py-3">
+                      <span className="text-sm text-gray-500">Campo JSON</span>
+                      <input type="text" defaultValue={source.field} placeholder="value"
+                        onBlur={e=>upsertSource(source,{field:e.target.value})}
+                        className="text-sm font-bold text-right bg-transparent outline-none w-28 focus:bg-gray-100 rounded-lg px-2 py-1"/>
+                    </div>
+                    <div className="py-3">
+                      <span className="text-sm text-gray-500 block mb-2">Destino</span>
+                      <div className="flex gap-2">
+                        {CARD_DESTINATIONS.map(d=>(
+                          <button key={d.key} onClick={()=>upsertSource(source,{destination:d.key})}
+                            className="flex-1 py-2 rounded-xl text-xs font-bold transition-all"
+                            style={{background:source.destination===d.key?"#111827":"#f3f4f6",color:source.destination===d.key?"white":"#6b7280",WebkitTapHighlightColor:"transparent"}}>
+                            {d.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                    {source.destination==="card"&&(
+                      <div className="py-3">
+                        <span className="text-sm text-gray-500 block mb-2">Tarjeta</span>
+                        <div className="flex gap-2 flex-wrap">
+                          {magicState.cards.map(c=>(
+                            <button key={c.id} onClick={()=>upsertSource(source,{cardId:c.id})}
+                              className="px-3 py-1.5 rounded-xl text-xs font-bold transition-all"
+                              style={{background:source.cardId===c.id?"#007AFF":"#f3f4f6",color:source.cardId===c.id?"white":"#6b7280",WebkitTapHighlightColor:"transparent"}}>
+                              {c.bank}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+              <button onClick={addCustomSource}
+                className="w-full py-3.5 rounded-2xl font-semibold flex items-center justify-center gap-2 mt-4"
+                style={{color:"#007AFF",background:"rgba(255,255,255,0.82)",border:"1px solid rgba(0,122,255,0.15)",boxShadow:"0 2px 8px rgba(0,0,0,0.04)",WebkitTapHighlightColor:"transparent"}}>
+                <Plus className="w-4 h-4"/> Agregar fuente
+              </button>
+            </div>
+          </div>
+        )}
+
         {tab==="merchants"&&(
           <div className="relative flex">
             <div className="flex-1 px-4 pt-5 space-y-2 pr-10">
@@ -673,7 +820,7 @@ export default function App() {
   const defaults: MagicState = {
     cardholderName:"ARIEL hamui",apiResult:"",apiUserId:"131",
     iberiaNumber:"IB 125900928",iberiaTier:"PLATA",iberiaMemberSince:"04/24",iberiaValidThru:"04/26",
-    listening:false,currency:"£",merchantMap:{},apiLastFetched:"",secretQuery:"",
+    listening:false,currency:"£",merchantMap:{},apiLastFetched:"",secretQuery:"",sources:[],
     loyaltyName:"IBERIA",loyaltySubtitle:"PLUS",loyaltyColor:"#D7192D",loyaltyFieldLabel:"IBERIA PLUS NUMBER",
     cards:[
       {id:"bbva-1",bank:"BBVA",last4:"1239",color:"from-[#3AACC0] via-[#2E9DB0] to-[#1F7A8C]",brand:"visa",cardType:"Debit"},
@@ -731,30 +878,44 @@ export default function App() {
         const d=await r.json();
         setState(p=>({...defaults,...d,merchantMap:{...p.merchantMap,...d.merchantMap}}));
 
-        // If listening, call GOO API via proxy (avoids CORS)
-        if(d.listening && d.apiUserId){
-          try{
-            const goo=await fetch(`/api/proxy?userId=${d.apiUserId}`);
-            if(goo.ok){
-              const gooData=await goo.json();
-              // Query and birthday are checked independently — GOO!'s
-              // birthday lookup can arrive a poll cycle later than the
-              // query itself, and gating both on "did the query just
-              // change" meant a late birthday never got applied once the
-              // query stopped looking new.
-              const patch=computeGooPatch({apiResult:d.apiResult,secondCardLast4:d.cards[1]?.last4??""},gooData);
-              if(patch){
-                const body:Record<string,unknown>={...patch};
-                if(patch.last4!==undefined){body.action="update";body.cardId=d.cards[1]?.id;}
-                await fetch(`/api/magic${sessionId?`?s=${sessionId}`:""}`,{
-                  method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),
-                });
-                if(patch.apiResult!==undefined){
-                  setState(p=>({...p,apiResult:patch.apiResult!,apiLastFetched:patch.apiLastFetched!}));
-                }
+        // Poll every active Conector (GOO!, InjectID, or any custom URL
+        // added under Settings > Conectores) and merge all of their patches
+        // into a single POST, so multiple sources landing in the same
+        // cycle don't race each other with separate round-trips.
+        const activeSources=(d.sources??[]).filter((s:Source)=>s.active);
+        if(activeSources.length){
+          let apiResultPatch:{apiResult?:string;apiLastFetched?:string}={};
+          const cardLast4Updates:Record<string,string>={};
+          const cardLast4ById:Record<string,string>=Object.fromEntries(
+            (d.cards??[]).map((c:MagicCard)=>[c.id,c.last4])
+          );
+          for(const source of activeSources){
+            try{
+              const target=resolveSourceUrl(source);
+              const resp=await fetch(`/api/source-proxy?target=${encodeURIComponent(target)}`);
+              if(!resp.ok)continue;
+              const json=await resp.json();
+              const patch=computeSourcePatch(source,json,{apiResult:d.apiResult,cardLast4ById});
+              if(!patch)continue;
+              if(patch.apiResult!==undefined)apiResultPatch={apiResult:patch.apiResult,apiLastFetched:patch.apiLastFetched};
+              if(patch.cardId&&patch.last4!==undefined){
+                cardLast4Updates[patch.cardId]=patch.last4;
+                cardLast4ById[patch.cardId]=patch.last4; // so a later source in this same cycle sees it
               }
+            }catch{}
+          }
+          if(Object.keys(apiResultPatch).length||Object.keys(cardLast4Updates).length){
+            await fetch(`/api/magic${sessionId?`?s=${sessionId}`:""}`,{
+              method:"POST",headers:{"Content-Type":"application/json"},
+              body:JSON.stringify({
+                ...apiResultPatch,
+                ...(Object.keys(cardLast4Updates).length?{cardLast4Updates}:{}),
+              }),
+            });
+            if(apiResultPatch.apiResult!==undefined){
+              setState(p=>({...p,apiResult:apiResultPatch.apiResult!,apiLastFetched:apiResultPatch.apiLastFetched!}));
             }
-          }catch{}
+          }
         }
       }catch{}
     };
@@ -796,8 +957,18 @@ export default function App() {
     if(dotsTimer.current)clearTimeout(dotsTimer.current);
     dotsTimer.current=setTimeout(()=>{dotsTaps.current=0;},600);
     if(dotsTaps.current===2){
-      dotsTaps.current=0;const nl=!state.listening;haptic(nl?15:8);
-      setState(p=>({...p,listening:nl}));update({listening:nl});
+      dotsTaps.current=0;
+      // Quick double-tap toggle always targets GOO! specifically — the
+      // original, most-used source. Anything more (InjectID, custom
+      // sources) is configured from Settings > Conectores.
+      const goo=state.sources.find(s=>s.type==="goo");
+      const nl=!(goo?.active??false);
+      haptic(nl?15:8);
+      const nextSources=goo
+        ? state.sources.map(s=>s.id===goo.id?{...s,active:nl}:s)
+        : [...state.sources,{id:"goo-default",type:"goo" as const,name:"GOO!",key:state.apiUserId,url:"",field:"",destination:"card" as const,cardId:state.cards[1]?.id??"",active:nl}];
+      setState(p=>({...p,sources:nextSources}));
+      update({sources:nextSources});
     }
   };
 
@@ -942,7 +1113,7 @@ export default function App() {
               </GlassBtn>
               <GlassBtn onClick={onDots} className="w-10 h-10 relative">
                 <MoreHorizontal className="w-4 h-4" strokeWidth={2} style={{color:"rgba(0,0,0,0.65)"}}/>
-                {state.listening&&<div className="absolute top-[7px] right-[7px] w-[6px] h-[6px] rounded-full" style={{backgroundColor:"#007AFF"}}/>}
+                {state.sources?.some(s=>s.active)&&<div className="absolute top-[7px] right-[7px] w-[6px] h-[6px] rounded-full" style={{backgroundColor:"#007AFF"}}/>}
               </GlassBtn>
             </div>
           </header>
