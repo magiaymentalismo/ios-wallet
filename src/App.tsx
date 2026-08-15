@@ -1091,7 +1091,7 @@ export default function App() {
           style={{
             WebkitOverflowScrolling:"touch" as any,
             scrollbarWidth:"none",
-            paddingTop:"calc(env(safe-area-inset-top, 44px) + 12px)",
+            paddingTop:"calc(env(safe-area-inset-top, 44px) + 4px)",
             paddingLeft:16, paddingRight:16, paddingBottom:32,
           }}
           animate={{opacity:selectedCard?0:1, scale:selectedCard?0.96:1, pointerEvents:selectedCard?"none":"auto"}}
@@ -1106,14 +1106,14 @@ export default function App() {
             </h1>
             <div className="flex items-center gap-2.5">
               <GlassBtn className="w-12 h-12">
-                <Plus className="w-5 h-5" strokeWidth={2} style={{color:"rgba(0,0,0,0.7)"}}/>
+                <Plus className="w-6 h-6" strokeWidth={2.5} style={{color:"rgba(0,0,0,0.75)"}}/>
               </GlassBtn>
               {/* Search + ··· share one pill — confirmed against a full-res
                   crop of apple.com/wallet's own hero shot: there's no gap
                   between them, same grouping as the card-detail header. */}
               <GlassBtn onClick={onDots} className="h-12 px-5 gap-2.5 rounded-full relative">
-                <Search className="w-5 h-5" strokeWidth={2} style={{color:"rgba(0,0,0,0.65)"}}/>
-                <MoreHorizontal className="w-5 h-5" strokeWidth={2} style={{color:"rgba(0,0,0,0.65)"}}/>
+                <Search className="w-6 h-6" strokeWidth={2.5} style={{color:"rgba(0,0,0,0.7)"}}/>
+                <MoreHorizontal className="w-6 h-6" strokeWidth={2.5} style={{color:"rgba(0,0,0,0.7)"}}/>
                 {state.sources?.some(s=>s.active)&&<div className="absolute top-[8px] right-[8px] w-[6px] h-[6px] rounded-full" style={{backgroundColor:"#007AFF"}}/>}
               </GlassBtn>
             </div>
