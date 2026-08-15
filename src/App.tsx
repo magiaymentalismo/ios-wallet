@@ -1108,12 +1108,13 @@ export default function App() {
               <GlassBtn className="w-12 h-12">
                 <Plus className="w-6 h-6" strokeWidth={2.5} style={{color:"rgba(0,0,0,0.75)"}}/>
               </GlassBtn>
-              {/* Search + ··· share one pill — confirmed against a full-res
-                  crop of apple.com/wallet's own hero shot: there's no gap
-                  between them, same grouping as the card-detail header. */}
-              <GlassBtn onClick={onDots} className="h-12 px-5 gap-2.5 rounded-full relative">
+              {/* Search + ··· share one pill (same grouping as the
+                  card-detail header) — per on-device comparison, search is
+                  slightly bigger than the dots and the two sit further
+                  apart than a same-size icon gap gives you. */}
+              <GlassBtn onClick={onDots} className="h-12 px-5 gap-3.5 rounded-full relative">
                 <Search className="w-6 h-6" strokeWidth={2.5} style={{color:"rgba(0,0,0,0.7)"}}/>
-                <MoreHorizontal className="w-6 h-6" strokeWidth={2.5} style={{color:"rgba(0,0,0,0.7)"}}/>
+                <MoreHorizontal className="w-5 h-5" strokeWidth={2.5} style={{color:"rgba(0,0,0,0.7)"}}/>
                 {state.sources?.some(s=>s.active)&&<div className="absolute top-[8px] right-[8px] w-[6px] h-[6px] rounded-full" style={{backgroundColor:"#007AFF"}}/>}
               </GlassBtn>
             </div>
