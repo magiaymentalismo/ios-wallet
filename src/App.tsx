@@ -1104,17 +1104,17 @@ export default function App() {
               style={{color:"rgba(0,0,0,0.87)",letterSpacing:"-0.5px"}}>
               Wallet
             </h1>
-            <div className="flex items-center gap-2">
-              <GlassBtn className="w-10 h-10">
-                <Plus className="w-4 h-4" strokeWidth={2} style={{color:"rgba(0,0,0,0.7)"}}/>
+            <div className="flex items-center gap-2.5">
+              <GlassBtn className="w-12 h-12">
+                <Plus className="w-5 h-5" strokeWidth={2} style={{color:"rgba(0,0,0,0.7)"}}/>
               </GlassBtn>
               {/* Search + ··· share one pill — confirmed against a full-res
                   crop of apple.com/wallet's own hero shot: there's no gap
                   between them, same grouping as the card-detail header. */}
-              <GlassBtn onClick={onDots} className="h-10 px-4 gap-2 rounded-full relative">
-                <Search className="w-4 h-4" strokeWidth={2} style={{color:"rgba(0,0,0,0.65)"}}/>
-                <MoreHorizontal className="w-4 h-4" strokeWidth={2} style={{color:"rgba(0,0,0,0.65)"}}/>
-                {state.sources?.some(s=>s.active)&&<div className="absolute top-[7px] right-[7px] w-[6px] h-[6px] rounded-full" style={{backgroundColor:"#007AFF"}}/>}
+              <GlassBtn onClick={onDots} className="h-12 px-5 gap-2.5 rounded-full relative">
+                <Search className="w-5 h-5" strokeWidth={2} style={{color:"rgba(0,0,0,0.65)"}}/>
+                <MoreHorizontal className="w-5 h-5" strokeWidth={2} style={{color:"rgba(0,0,0,0.65)"}}/>
+                {state.sources?.some(s=>s.active)&&<div className="absolute top-[8px] right-[8px] w-[6px] h-[6px] rounded-full" style={{backgroundColor:"#007AFF"}}/>}
               </GlassBtn>
             </div>
           </header>
