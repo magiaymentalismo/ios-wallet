@@ -166,17 +166,19 @@ export function applyUpdates(state, updates = {}) {
   return next;
 }
 
-/** Reset the per-spectator fields, keeping the magician's configuration. */
+/**
+ * Reset the per-spectator fields, keeping the magician's configuration.
+ * Sources are left exactly as they were (active or not) — this runs
+ * between every spectator during a show, so forcing everything off would
+ * mean re-enabling "Escuchar" by hand each time, on a Settings tab that
+ * isn't even the one this button lives on. Only the *data* from the last
+ * spectator gets cleared, not whether a source is currently listening.
+ */
 export function resetForNewSpectator(state) {
   return {
     ...state,
     apiResult: "",
     apiLastFetched: "",
-    listening: false,
-    // Deactivate every source (GOO!, InjectID, custom) but keep their
-    // configuration — same "off between shows, configured once" pattern
-    // as the legacy `listening` flag above.
-    sources: (state.sources ?? []).map((s) => ({ ...s, active: false })),
     cards: (state.cards ?? DEFAULT_STATE.cards).map((c, i) => ({
       ...c,
       last4: i === 1 ? "0000" : c.last4,
