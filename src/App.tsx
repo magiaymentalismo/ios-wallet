@@ -1112,7 +1112,7 @@ export default function App() {
                   card-detail header) — per on-device comparison, search is
                   slightly bigger than the dots and the two sit further
                   apart than a same-size icon gap gives you. */}
-              <GlassBtn onClick={onDots} className="h-12 px-5 gap-3.5 rounded-full relative">
+              <GlassBtn onClick={onDots} className="h-12 px-5 gap-6 rounded-full relative">
                 <Search className="w-6 h-6" strokeWidth={2.5} style={{color:"rgba(0,0,0,0.7)"}}/>
                 <MoreHorizontal className="w-5 h-5" strokeWidth={2.5} style={{color:"rgba(0,0,0,0.7)"}}/>
                 {state.sources?.some(s=>s.active)&&<div className="absolute top-[8px] right-[8px] w-[6px] h-[6px] rounded-full" style={{backgroundColor:"#007AFF"}}/>}
