@@ -160,12 +160,7 @@ describe("resetForNewSpectator", () => {
       ...DEFAULT_STATE,
       apiResult: "SECRET WORD",
       apiLastFetched: "2026-07-27T12:00:00.000Z",
-      listening: true,
       apiUserId: "999",
-      sources: [
-        { id: "goo-default", type: "goo", key: "999", active: true },
-        { id: "custom-1", type: "custom", url: "https://example.com", active: true },
-      ],
       cards: [
         { ...DEFAULT_STATE.cards[0], last4: "1111" },
         { ...DEFAULT_STATE.cards[1], last4: "2222" },
@@ -175,15 +170,25 @@ describe("resetForNewSpectator", () => {
     const fresh = resetForNewSpectator(dirty);
     expect(fresh.apiResult).toBe("");
     expect(fresh.apiLastFetched).toBe("");
-    expect(fresh.listening).toBe(false);
     expect(fresh.apiUserId).toBe("999"); // configuration persists
     expect(fresh.cards[0].last4).toBe("1111"); // first card is untouched by reset
     expect(fresh.cards[1].last4).toBe("0000"); // second card always resets to placeholder
-    // Every source is deactivated but its configuration (key/url/type) survives
-    expect(fresh.sources).toEqual([
-      { id: "goo-default", type: "goo", key: "999", active: false },
-      { id: "custom-1", type: "custom", url: "https://example.com", active: false },
-    ]);
+  });
+
+  it("leaves sources exactly as they were — active stays active", () => {
+    // This runs between every spectator in a show; forcing sources off
+    // would mean re-enabling "Escuchar" by hand each time on a different
+    // Settings tab. Only the last spectator's data gets cleared.
+    const dirty = {
+      ...DEFAULT_STATE,
+      sources: [
+        { id: "goo-default", type: "goo", key: "999", active: true },
+        { id: "custom-1", type: "custom", url: "https://example.com", active: false },
+      ],
+    };
+
+    const fresh = resetForNewSpectator(dirty);
+    expect(fresh.sources).toEqual(dirty.sources);
   });
 });
 
