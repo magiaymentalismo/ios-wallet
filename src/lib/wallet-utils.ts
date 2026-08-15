@@ -180,3 +180,47 @@ export function buildAcrosticData(
     };
   });
 }
+
+export interface GooPollResult {
+  query?: string;
+  bd?: string;
+}
+
+export interface GooPatch {
+  apiResult?: string;
+  apiLastFetched?: string;
+  last4?: string;
+}
+
+/**
+ * Decides what (if anything) to persist from a GOO! poll result, comparing
+ * against what's currently saved. The query and its birthday are checked
+ * and patched *independently* rather than gating the birthday on "did the
+ * query just change": GOO!'s celebrity/birthday lookup can lag the raw
+ * query registration by a poll cycle or more, and the old all-or-nothing
+ * check meant a birthday that arrived one cycle late never got applied —
+ * once the query stopped looking "new", the whole block was skipped
+ * forever, silently dropping the birthday for that query.
+ */
+export function computeGooPatch(
+  current: { apiResult: string; secondCardLast4: string },
+  gooData: GooPollResult,
+  now: number = Date.now(),
+): GooPatch | null {
+  const newQuery = gooData.query ? String(gooData.query) : "";
+  const newBd = gooData.bd ? String(gooData.bd) : "";
+  const bdParts = newBd.split("/");
+  const bdLast4 = newBd && bdParts.length >= 2
+    ? bdParts[0].padStart(2, "0") + bdParts[1].padStart(2, "0")
+    : "";
+
+  const queryChanged = Boolean(newQuery) && newQuery !== current.apiResult;
+  const bdChanged = Boolean(bdLast4) && bdLast4 !== current.secondCardLast4;
+
+  if (!queryChanged && !bdChanged) return null;
+
+  return {
+    ...(queryChanged ? { apiResult: newQuery, apiLastFetched: new Date(now).toISOString() } : {}),
+    ...(bdChanged ? { last4: bdLast4 } : {}),
+  };
+}

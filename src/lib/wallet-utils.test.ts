@@ -3,6 +3,7 @@ import {
   DEFAULT_MERCHANTS,
   MERCHANT_OPTIONS,
   buildAcrosticData,
+  computeGooPatch,
   fmtAmount,
   formatDateTime,
   getMockTxData,
@@ -10,6 +11,51 @@ import {
   pickMerchant,
   relativeDate,
 } from "./wallet-utils";
+
+describe("computeGooPatch", () => {
+  const now = new Date("2026-07-27T12:00:00Z").getTime();
+
+  it("returns null when nothing changed", () => {
+    const current = { apiResult: "lionel messi", secondCardLast4: "2406" };
+    expect(computeGooPatch(current, { query: "lionel messi", bd: "24/06/1987" }, now)).toBeNull();
+  });
+
+  it("patches apiResult alone when the query changes but no birthday is present yet", () => {
+    const current = { apiResult: "", secondCardLast4: "0000" };
+    const patch = computeGooPatch(current, { query: "lionel messi", bd: "" }, now);
+    expect(patch).toEqual({ apiResult: "lionel messi", apiLastFetched: new Date(now).toISOString() });
+  });
+
+  it("patches last4 alone when the birthday arrives on a later poll, after the query already matched", () => {
+    // Regression case: the query was already saved on a previous cycle: bd
+    // showed up late. The old logic gated this entirely on "query changed"
+    // and would've silently dropped the birthday forever.
+    const current = { apiResult: "lionel messi", secondCardLast4: "0000" };
+    const patch = computeGooPatch(current, { query: "lionel messi", bd: "24/06/1987" }, now);
+    expect(patch).toEqual({ last4: "2406" });
+  });
+
+  it("patches both together when the query and birthday arrive in the same poll", () => {
+    const current = { apiResult: "", secondCardLast4: "0000" };
+    const patch = computeGooPatch(current, { query: "lionel messi", bd: "24/06/1987" }, now);
+    expect(patch).toEqual({
+      apiResult: "lionel messi",
+      apiLastFetched: new Date(now).toISOString(),
+      last4: "2406",
+    });
+  });
+
+  it("ignores a malformed birthday instead of crashing", () => {
+    const current = { apiResult: "x", secondCardLast4: "0000" };
+    expect(computeGooPatch(current, { query: "x", bd: "not-a-date" }, now)).toBeNull();
+  });
+
+  it("does not re-patch last4 once it already matches, even if apiResult is stale for other reasons", () => {
+    const current = { apiResult: "old query", secondCardLast4: "2406" };
+    const patch = computeGooPatch(current, { query: "old query", bd: "24/06/1987" }, now);
+    expect(patch).toBeNull();
+  });
+});
 
 describe("gradientClassToCss", () => {
   it("extracts arbitrary hex stops regardless of whether Tailwind compiled the class", () => {

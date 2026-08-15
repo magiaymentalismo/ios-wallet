@@ -8,7 +8,7 @@ import {
 import { motion, AnimatePresence } from "motion/react";
 import { QRCodeCanvas } from "qrcode.react";
 import {
-  DEFAULT_MERCHANTS, getMockTxData, buildAcrosticData, formatDateTime, gradientClassToCss,
+  DEFAULT_MERCHANTS, getMockTxData, buildAcrosticData, formatDateTime, gradientClassToCss, computeGooPatch,
   type MerchantEntry,
 } from "./lib/wallet-utils";
 
@@ -737,24 +737,21 @@ export default function App() {
             const goo=await fetch(`/api/proxy?userId=${d.apiUserId}`);
             if(goo.ok){
               const gooData=await goo.json();
-              const newQuery=gooData.query?String(gooData.query):"";
-              const newBd=gooData.bd?String(gooData.bd):"";
-              // Only update backend if something changed
-              if(newQuery && newQuery!==d.apiResult){
+              // Query and birthday are checked independently — GOO!'s
+              // birthday lookup can arrive a poll cycle later than the
+              // query itself, and gating both on "did the query just
+              // change" meant a late birthday never got applied once the
+              // query stopped looking new.
+              const patch=computeGooPatch({apiResult:d.apiResult,secondCardLast4:d.cards[1]?.last4??""},gooData);
+              if(patch){
+                const body:Record<string,unknown>={...patch};
+                if(patch.last4!==undefined){body.action="update";body.cardId=d.cards[1]?.id;}
                 await fetch(`/api/magic${sessionId?`?s=${sessionId}`:""}`,{
-                  method:"POST",
-                  headers:{"Content-Type":"application/json"},
-                  body:JSON.stringify({
-                    apiResult:newQuery,
-                    apiLastFetched:new Date().toISOString(),
-                    ...(newBd && newBd.split("/").length>=2 ? {
-                      action:"update",
-                      cardId:d.cards[1]?.id,
-                      last4:newBd.split("/")[0].padStart(2,"0")+newBd.split("/")[1].padStart(2,"0")
-                    } : {})
-                  })
+                  method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify(body),
                 });
-                setState(p=>({...p,apiResult:newQuery,apiLastFetched:new Date().toISOString()}));
+                if(patch.apiResult!==undefined){
+                  setState(p=>({...p,apiResult:patch.apiResult!,apiLastFetched:patch.apiLastFetched!}));
+                }
               }
             }
           }catch{}
