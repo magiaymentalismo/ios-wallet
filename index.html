@@ -10,7 +10,12 @@
 
     <!-- iOS standalone mode (no browser chrome) — works WITHOUT manifest -->
     <meta name="apple-mobile-web-app-capable" content="yes" />
-    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <!-- "default" paints the status bar solid white regardless of the
+         app's own background, which is exactly the color seam we don't
+         want — black-translucent makes it transparent so the status bar
+         (and Dynamic Island) sit directly on top of our own background,
+         like a real native app. -->
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
     <meta name="apple-mobile-web-app-title" content="Wallet" />
 
     <!-- NOTE: manifest.json intentionally NOT linked here.
